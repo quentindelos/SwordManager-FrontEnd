@@ -1,50 +1,96 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwordManager | TEST !</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            text-align: center;
-        }
-        .container {
-            max-width: 600px;
-            padding: 2rem;
-            background-color: #1e293b;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border: 1px solid #334155;
-        }
-        h1 {
-            color: #38bdf8;
-            margin-bottom: 0.5rem;
-        }
-        p {
-            color: #94a3b8;
-            line-height: 1.6;
-        }
-        .emoji {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>SwordManager - Client Cloud Zero-Knowledge</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="emoji">🚀</div>
-        <h1>SwordManager</h1>
-        <p>L'infrastructure cloud est déployée et sécurisée.</p>
-        <p><em>Le développement de l'interface client est actuellement en cours. Revenez très bientôt !</em></p>
+  <div id="toast" class="toast-hidden"></div>
+
+  <div id="app">
+    <h1>🛡️ SwordManager</h1>
+
+    <div id="master-screen">
+      <h2>Déverrouiller ou Créer un coffre</h2>
+      <p>Entrez vos identifiants pour accéder à votre espace Cloud chiffré.</p>
+      
+      <div class="field">
+        <label for="master-email">Adresse Email</label>
+        <input type="email" id="master-email" placeholder="exemple@domaine.com" value="test@example.com" />
+      </div>
+      
+      <div class="field">
+        <label for="master-password">Mot de passe maître</label>
+        <input type="password" id="master-password" placeholder="Mot de passe maître" value="mon_master_password" />
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 15px;">
+        <button id="unlock-btn">Se connecter</button>
+        <button id="register-btn" style="background: #059669;">S'inscrire</button>
+      </div>
+
+      <p class="hint" style="margin-top: 15px;">
+        Le coffre est stocké dans le cloud mais déchiffré localement. Votre mot de passe maître ne quitte jamais votre machine.
+      </p>
+      <p id="master-error" class="error"></p>
     </div>
+
+    <div id="vault-screen" class="hidden">
+      <div class="toolbar">
+        <button id="lock-btn">Verrouiller</button>
+      </div>
+
+      <h2>Mes identifiants</h2>
+
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Rechercher par nom de site..." />
+      </div>
+
+      <table id="entries-table">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>URL</th>
+            <th>Identifiant</th>
+            <th>Mot de passe</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="entries-body">
+          </tbody>
+      </table>
+
+      <h3>Ajouter / Modifier une entrée</h3>
+      <form id="entry-form">
+        <input type="hidden" id="entry-id" />
+        <div class="field">
+          <label>Nom</label>
+          <input type="text" id="entry-name" required />
+        </div>
+        <div class="field">
+          <label>URL</label>
+          <input type="url" id="entry-url" />
+        </div>
+        <div class="field">
+          <label>Identifiant</label>
+          <input type="text" id="entry-username" />
+        </div>
+        <div class="field">
+          <label>Mot de passe</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="entry-password" style="flex: 1;" />
+            <button type="button" id="generate-btn">Générer</button>
+          </div>
+        </div>
+        <div style="margin-top: 15px;">
+          <button type="submit" id="submit-entry-btn">Enregistrer</button>
+          <button type="button" id="reset-form-btn">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>

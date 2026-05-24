@@ -1,0 +1,214 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+}
+
+#app {
+  width: 100%;
+  max-width: 900px;
+  margin: 40px 16px;
+  padding: 24px;
+  border-radius: 12px;
+  background: #020617;
+  box-shadow: 0 25px 40px rgba(0, 0, 0, 0.45);
+}
+
+h1 {
+  margin-top: 0;
+  text-align: center;
+  color: #f9fafb;
+}
+
+h2, h3 {
+  color: #e5e7eb;
+}
+
+.hidden {
+  display: none;
+}
+
+.field {
+  margin-bottom: 10px;
+}
+
+.field label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+  color: #9ca3af;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="url"],
+input[type="search"],
+input[type="email"],
+input[type="number"] {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #1e293b;
+  background: #020617;
+  color: #e5e7eb;
+  box-sizing: border-box;
+}
+
+input:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 1px;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #4f46e5;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+button:hover {
+  background: #6366f1;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+#generate-btn {
+  margin-left: 8px;
+  background: #059669;
+}
+
+#generate-btn:hover {
+  background: #10b981;
+}
+
+#reset-form-btn {
+  margin-left: 8px;
+  background: #6b7280;
+}
+
+#reset-form-btn:hover {
+  background: #9ca3af;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.error {
+  color: #f97373;
+  font-size: 0.9rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+/* Table */
+#entries-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+#entries-table thead {
+  background: #020617;
+}
+
+#entries-table th,
+#entries-table td {
+  padding: 8px;
+  border-bottom: 1px solid #1e293b;
+}
+
+#entries-table tbody tr:nth-child(even) {
+  background: #020617;
+}
+
+#entries-table tbody tr:nth-child(odd) {
+  background: #020617;
+}
+
+.action-btn {
+  margin-right: 4px;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+
+.action-btn.edit {
+  background: #22c55e;
+}
+
+.action-btn.delete {
+  background: #ef4444;
+}
+
+/* Search */
+.search-bar {
+  margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   OPTIMISATIONS UX / PREMIUM (Ajouts pour perfectionner l'interface)
+   ========================================================================== */
+
+/* Notification éphémère (Toast) */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1e1b4b;
+  color: #c7d2fe;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: 1px solid #4338ca;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 9999;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast-hidden {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+
+.toast-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Style de l'œil d'action dans le tableau */
+.toggle-pw-btn {
+  background: transparent;
+  padding: 2px 6px;
+  margin-left: 8px;
+  font-size: 0.85rem;
+  border: 1px solid #1e293b;
+  border-radius: 4px;
+}
+
+.toggle-pw-btn:hover {
+  background: #1e293b;
+}
+
+/* Champ mot de passe masqué par défaut */
+.hidden-password {
+  font-family: monospace;
+  letter-spacing: 1.5px;
+}
