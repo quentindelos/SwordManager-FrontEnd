@@ -132,6 +132,7 @@ button:disabled {
 #entries-table td {
   padding: 8px;
   border-bottom: 1px solid #1e293b;
+  text-align: center;
 }
 
 #entries-table tbody tr:nth-child(even) {
