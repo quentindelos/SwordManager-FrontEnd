@@ -1,6 +1,6 @@
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://localhost:3000/api" 
-    : "/api";
+    ? "http://localhost:3000" 
+    : "https://api.swordmanager.cloud";
 
 // État de session strict en mémoire volatile
 let vaultEntries = [];
@@ -365,16 +365,26 @@ function handleLogout() {
 }
 
 function resetForm() {
-  entryIdInput.value = ""; entryNameInput.value = ""; entryUrlInput.value = ""; entryUsernameInput.value = ""; entryPasswordInput.value = "";
+  entryIdInput.value = ""; 
+  entryNameInput.value = ""; 
+  entryUrlInput.value = ""; 
+  entryUsernameInput.value = ""; 
+  entryPasswordInput.value = "";
+  submitEntryBtn.textContent = "Enregistrer"; // Remet le texte d'origine
 }
 
 function loadEntryIntoForm(index) {
   const entry = vaultEntries[index];
-  entryIdInput.value = entry.id || index;
+  // Correction ici : on stocke le vrai ID SQL (UUID) de l'élément
+  entryIdInput.value = entry.id || ""; 
+  
   entryNameInput.value = entry.name || "";
   entryUrlInput.value = entry.url || "";
   entryUsernameInput.value = entry.username || "";
   entryPasswordInput.value = entry.password || "";
+  
+  // Petit bonus visuel pour savoir que tu es en mode édition
+  submitEntryBtn.textContent = "Mettre à jour"; 
   window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
@@ -388,6 +398,8 @@ entryForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   submitEntryBtn.disabled = true;
 
+  const entryId = entryIdInput.value; // Récupère l'ID injecté par loadEntryIntoForm
+
   const entryDataClear = {
     url: entryUrlInput.value.trim(),
     username: entryUsernameInput.value.trim(),
@@ -400,17 +412,26 @@ entryForm.addEventListener("submit", async (e) => {
   try {
     const encryptedData = await encryptString(JSON.stringify(entryDataClear), vaultKey);
 
-    const res = await fetch(`${API_URL}/vault`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
-      body: JSON.stringify({ type: "login", label, encryptedData, folder: null })
-    });
+let res;
+    if (entryId) {
+      res = await fetch(`${API_URL}/vault/${entryId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+        body: JSON.stringify({ type: "login", label, encryptedData, folder: null })
+      });
+    } else {
+      res = await fetch(`${API_URL}/vault`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
+        body: JSON.stringify({ type: "login", label, encryptedData, folder: null })
+      });
+    }
 
     if (res.ok) {
       await fetchVaultItems();
       resetForm();
       renderEntries(searchInput.value);
-      showToast("💾 Synchronisé avec le Cloud.");
+      showToast(entryId ? "🔄 Identifiant mis à jour !" : "💾 Synchronisé avec le Cloud.");
     } else {
       alert("Échec de synchronisation.");
     }
