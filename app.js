@@ -144,7 +144,7 @@ async function handleRegister() {
     const rawVaultKey = crypto.getRandomValues(new Uint8Array(32));
     const protectedKey = await encryptString(bufToBase64(rawVaultKey.buffer), encryptionKey);
 
-    const res = await fetch(`${API_URL}/api/auth/register`, {
+    const res = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password: authHash, protectedKey })
@@ -192,7 +192,7 @@ async function handleLogin() {
   try {
     const { encryptionKey, authHash } = await deriveKeys(pwd, email);
 
-    const res = await fetch(`${API_URL}/api/auth/login`, {
+    const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password: authHash })
@@ -230,7 +230,7 @@ async function handleLogin() {
 }
 
 async function fetchVaultItems() {
-  const res = await fetch(`${API_URL}/api/vault`, {
+  const res = await fetch(`${API_URL}/vault`, {
     headers: { "Authorization": `Bearer ${userToken}` }
   });
   const encryptedItems = await res.json();
@@ -322,7 +322,7 @@ function renderEntries(filter = "") {
       delBtn.addEventListener("click", async () => {
         if (confirm("Supprimer définitivement cet identifiant du cloud ?")) {
           if (entry.id) {
-            await fetch(`${API_URL}/api/vault/${entry.id}`, {
+            await fetch(`${API_URL}/vault/${entry.id}`, {
               method: "DELETE",
               headers: { "Authorization": `Bearer ${userToken}` }
             });
@@ -416,13 +416,13 @@ entryForm.addEventListener("submit", async (e) => {
 
 let res;
     if (entryId) {
-      res = await fetch(`${API_URL}/api/vault/${entryId}`, {
+      res = await fetch(`${API_URL}/vault/${entryId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
         body: JSON.stringify({ type: "login", label, encryptedData, folder: null })
       });
     } else {
-      res = await fetch(`${API_URL}/api/vault`, {
+      res = await fetch(`${API_URL}/vault`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
         body: JSON.stringify({ type: "login", label, encryptedData, folder: null })
