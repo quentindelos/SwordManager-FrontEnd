@@ -1,7 +1,7 @@
-const API_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:3000" 
-    : "https://api.swordmanager.cloud";
-
+    : "https://api.swordmanager.cloud"
+    : "/api";
 
 
 // État de session strict en mémoire volatile
@@ -18,6 +18,8 @@ const unlockBtn = document.getElementById("unlock-btn");
 const registerBtn = document.getElementById("register-btn");
 const masterError = document.getElementById("master-error");
 const lockBtn = document.getElementById("lock-btn");
+const toggleFormBtn = document.getElementById("toggle-form-btn");
+
 
 const searchInput = document.getElementById("search-input");
 const entriesBody = document.getElementById("entries-body");
@@ -265,10 +267,12 @@ function renderEntries(filter = "") {
       const tr = document.createElement("tr");
 
       const tdName = document.createElement("td");
+      tdName.setAttribute("data-label", "Nom");
       tdName.textContent = entry.name || "";
       tr.appendChild(tdName);
 
       const tdUrl = document.createElement("td");
+      tdUrl.setAttribute("data-label", "URL");
       if (entry.url) {
         const a = document.createElement("a");
         a.href = entry.url; a.textContent = entry.url; a.target = "_blank"; a.rel = "noopener noreferrer";
@@ -276,12 +280,34 @@ function renderEntries(filter = "") {
       }
       tr.appendChild(tdUrl);
 
+      // 🛠️ BLOC IDENTIFIANT MODIFIÉ AVEC BOUTON COPIE RAPIDE
       const tdUsername = document.createElement("td");
-      tdUsername.textContent = entry.username || "";
+      tdUsername.setAttribute("data-label", "Identifiant");
+      
+      const usernameSpan = document.createElement("span");
+      usernameSpan.textContent = entry.username || "";
+      tdUsername.appendChild(usernameSpan);
+
+      // On n'affiche le bouton de copie que si un identifiant existe
+      if (entry.username) {
+        const copyUserBtn = document.createElement("button");
+        copyUserBtn.className = "toggle-pw-btn"; // Réutilise ton style discret avec bordure
+        copyUserBtn.textContent = "📋";
+        copyUserBtn.title = "Copier l'identifiant";
+        copyUserBtn.style.marginLeft = "8px";
+        
+        copyUserBtn.addEventListener("click", () => { 
+          navigator.clipboard.writeText(entry.username).then(() => {
+            showToast("📋 Identifiant copié !");
+          });
+        });
+        tdUsername.appendChild(copyUserBtn);
+      }
       tr.appendChild(tdUsername);
 
       // Système d'affichage par bouton œil
       const tdPassword = document.createElement("td");
+      tdPassword.setAttribute("data-label", "Mot de passe");
       const pwSpan = document.createElement("span");
       pwSpan.className = "hidden-password";
       pwSpan.textContent = "••••••••";
@@ -304,6 +330,7 @@ function renderEntries(filter = "") {
 
       // Actions : Édition / Copie / Suppression
       const tdActions = document.createElement("td");
+      tdActions.setAttribute("data-label", "Actions");
       
       const copyBtn = document.createElement("button");
       copyBtn.textContent = "Copier";
@@ -372,12 +399,20 @@ function resetForm() {
   entryUrlInput.value = ""; 
   entryUsernameInput.value = ""; 
   entryPasswordInput.value = "";
-  submitEntryBtn.textContent = "Enregistrer"; // Remet le texte d'origine
+  submitEntryBtn.textContent = "Enregistrer"; 
+  
+  if (document.getElementById('password-strength')) {
+    document.getElementById('password-strength').className = 'strength-bar';
+  }
+
+  // 🛠️ AJOUT : Ferme automatiquement le formulaire et réinitialise le bouton
+  entryForm.classList.add("hidden");
+  toggleFormBtn.textContent = "➕ Ajouter un identifiant";
+  toggleFormBtn.style.background = "#2563eb"; 
 }
 
 function loadEntryIntoForm(index) {
   const entry = vaultEntries[index];
-  // Correction ici : on stocke le vrai ID SQL (UUID) de l'élément
   entryIdInput.value = entry.id || ""; 
   
   entryNameInput.value = entry.name || "";
@@ -385,8 +420,14 @@ function loadEntryIntoForm(index) {
   entryUsernameInput.value = entry.username || "";
   entryPasswordInput.value = entry.password || "";
   
-  // Petit bonus visuel pour savoir que tu es en mode édition
   submitEntryBtn.textContent = "Mettre à jour"; 
+  checkPasswordStrength(entry.password || "");
+
+  // 🛠️ AJOUT : Ouvre le formulaire pour l'édition et change le style du bouton
+  entryForm.classList.remove("hidden");
+  toggleFormBtn.textContent = "❌ Fermer le formulaire";
+  toggleFormBtn.style.background = "#6b7280"; 
+
   window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
@@ -405,27 +446,47 @@ entryForm.addEventListener("submit", async (e) => {
   const entryDataClear = {
     url: entryUrlInput.value.trim(),
     username: entryUsernameInput.value.trim(),
-    password: entryPasswordInput.value
+    password: entryPasswordInput.value,
   };
 
   const label = entryNameInput.value.trim();
   if (!label) return alert("Nom requis.");
 
   try {
-    const encryptedData = await encryptString(JSON.stringify(entryDataClear), vaultKey);
+    const encryptedData = await encryptString(
+      JSON.stringify(entryDataClear),
+      vaultKey,
+    );
 
-let res;
+    let res;
+    // Comme API_URL contient déjà "/api", on rajoute juste "/vault" ou "/vault/:id"
     if (entryId) {
       res = await fetch(`${API_URL}/vault/${entryId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
-        body: JSON.stringify({ type: "login", label, encryptedData, folder: null })
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({
+          type: "login",
+          label,
+          encryptedData,
+          folder: null,
+        }),
       });
     } else {
       res = await fetch(`${API_URL}/vault`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
-        body: JSON.stringify({ type: "login", label, encryptedData, folder: null })
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({
+          type: "login",
+          label,
+          encryptedData,
+          folder: null,
+        }),
       });
     }
 
@@ -433,7 +494,11 @@ let res;
       await fetchVaultItems();
       resetForm();
       renderEntries(searchInput.value);
-      showToast(entryId ? "🔄 Identifiant mis à jour !" : "💾 Synchronisé avec le Cloud.");
+      showToast(
+        entryId
+          ? "🔄 Identifiant mis à jour !"
+          : "💾 Synchronisé avec le Cloud.",
+      );
     } else {
       alert("Échec de synchronisation.");
     }
@@ -444,14 +509,86 @@ let res;
   }
 });
 
-generateBtn.addEventListener("click", () => { 
+generateBtn.addEventListener("click", () => {
   entryPasswordInput.value = (() => {
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+";
-    let pw = ""; const array = new Uint32Array(16); crypto.getRandomValues(array);
-    for (let i = 0; i < 16; i++) { pw += chars[array[i] % chars.length]; }
+    const chars =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+";
+    let pw = "";
+    const array = new Uint32Array(16);
+    crypto.getRandomValues(array);
+    for (let i = 0; i < 16; i++) {
+      pw += chars[array[i] % chars.length];
+    }
     return pw;
   })();
   showToast("🎲 Mot de passe fort généré.");
 });
 
 resetFormBtn.addEventListener("click", resetForm);
+
+// ==========================================================================
+// 🛡️ ANALYSEUR DE FORCE DU MOT DE PASSE
+// ==========================================================================
+const strengthBar = document.getElementById("password-strength");
+
+function checkPasswordStrength(password) {
+  // On réinitialise la classe de la barre
+  strengthBar.className = "strength-bar";
+
+  // Si le champ est vide, la barre disparaît
+  if (!password) return;
+
+  let score = 0;
+
+  // Critère 1 : Longueur
+  if (password.length >= 8) score++;
+  if (password.length >= 14) score++;
+
+  // Critère 2 : Présence de chiffres
+  if (/\d/.test(password)) score++;
+
+  // Critère 3 : Présence de majuscules et minuscules
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+
+  // Critère 4 : Présence de caractères spéciaux
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  // Attribution de la couleur/largeur selon le score calculé
+  if (score <= 2) {
+    strengthBar.classList.add("weak"); // Rouge
+  } else if (score <= 4) {
+    strengthBar.classList.add("medium"); // Orange
+  } else {
+    strengthBar.classList.add("strong"); // Vert
+  }
+}
+
+// Écouteur sur la saisie manuelle au clavier
+entryPasswordInput.addEventListener("input", (e) => {
+  checkPasswordStrength(e.target.value);
+});
+
+// Écouteur lors du clic sur le bouton "Générer"
+generateBtn.addEventListener("click", () => {
+  // Un mini timeout de 10ms permet de s'assurer que l'input a bien reçu la valeur générée avant de calculer
+  setTimeout(() => {
+    checkPasswordStrength(entryPasswordInput.value);
+  }, 10);
+});
+// ==========================================================================
+// 🔄 LOGIQUE D'AFFICHAGE DU FORMULAIRE (TOGGLE)
+// ==========================================================================
+toggleFormBtn.addEventListener("click", () => {
+  if (entryForm.classList.contains("hidden")) {
+    // Si le formulaire est caché, on l'affiche
+    entryForm.classList.remove("hidden");
+    toggleFormBtn.textContent = "❌ Fermer le formulaire";
+    toggleFormBtn.style.background = "#6b7280"; // Passe en gris discret
+
+    // Défilement fluide vers le formulaire pour le confort visuel
+    entryForm.scrollIntoView({ behavior: "smooth" });
+  } else {
+    // S'il est déjà ouvert, on appelle resetForm() qui va le nettoyer et le cacher
+    resetForm();
+  }
+});
