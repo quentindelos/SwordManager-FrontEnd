@@ -213,3 +213,202 @@ button:disabled {
   font-family: monospace;
   letter-spacing: 1.5px;
 }
+.password-container {
+  display: flex;
+  gap: 8px;
+}
+
+.password-container input {
+  flex: 1;
+}
+/* ==========================================================================
+   DÉFILEMENT DU TABLEAU (Solution 1)
+   ========================================================================== */
+.table-container {
+  width: 100%;       /* S'assure que le bloc prend toute la largeur */
+  max-height: 200px; /* Limite la hauteur */
+  overflow-y: auto;  /* Active la scrollbar */
+  display: block;    /* 🛠️ AJOUTE CETTE LIGNE pour forcer le respect de la hauteur max */
+  margin-bottom: 24px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  background: #020617;
+}
+
+/* Fixe les en-têtes (Nom, URL...) en haut pendant le défilement */
+#entries-table th {
+  position: sticky;
+  top: 0;
+  background: #020617; 
+  z-index: 10;
+  border-bottom: 2px solid #1e293b;
+}
+
+/* Styling des liens URL dans le tableau */
+#entries-table td a {
+  color: #6366f1;          /* Un superbe bleu indigo/violet moderne, très lisible sur fond sombre */
+  text-decoration: none;   /* On enlève le soulignement brut par défaut */
+  font-weight: 500;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+/* Quand on passe la souris sur le lien */
+#entries-table td a:hover {
+  color: #818cf8;          /* Le lien s'illumine légèrement au survol */
+  text-decoration: underline; /* Le soulignement apparaît proprement uniquement au survol */
+}
+
+/* ⚠️ ANNULATION DE L'EFFET VIOLET DEJA VU */
+#entries-table td a:visited {
+  color: #6366f1;          /* Reste exactement de la même couleur, même s'il a déjà été cliqué */
+}
+
+/* Style de base pour la barre de force */
+.strength-bar {
+  height: 5px;
+  width: 0%; /* Commence à 0% de largeur */
+  margin-top: 6px;
+  border-radius: 4px;
+  background: transparent;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* Les 3 états de force */
+.strength-bar.weak {
+  width: 33%;
+  background-color: #ef4444; /* Rouge */
+}
+
+.strength-bar.medium {
+  width: 66%;
+  background-color: #f59e0b; /* Orange */
+}
+
+.strength-bar.strong {
+  width: 100%;
+  background-color: #10b981; /* Vert moderne */
+}
+
+/* Une ligne sur deux est un tout petit peu plus claire */
+#entries-table tbody tr:nth-child(even) {
+  background: #0b1329;
+}
+
+/* La ligne survolée s'illumine pour guider le regard */
+#entries-table tbody tr:hover {
+  background: #1e293b;
+  transition: background 0.15s ease;
+}
+/* ==========================================================================
+   RESPONSIVE DESIGN (Mobile & Tablettes)
+   ========================================================================== */
+@media (max-width: 768px) {
+  #app {
+    margin: 12px 8px;
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  /* Formulaire : Alignement vertical des boutons d'action */
+  .field button, 
+  #reset-form-btn {
+    margin-left: 0;
+    margin-top: 8px;
+    width: 100%; 
+  }
+
+/* Casse le flex pour empiler l'input et le bouton sur mobile */
+  .password-container {
+    display: block !important;
+  }
+
+  .password-container input {
+    width: 100% !important;
+  }
+
+  /* Force le bouton Générer à prendre toute la largeur en dessous */
+  #generate-btn {
+    width: 100% !important;
+    margin-left: 0 !important; 
+    margin-top: 8px !important;           
+    display: block !important;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .toolbar button {
+    width: 100%;
+  }
+
+  /* Transformation du Tableau en "Cartes" empilées */
+  #entries-table thead {
+    display: none; 
+  }
+
+  #entries-table, 
+  #entries-table tbody, 
+  #entries-table tr, 
+  #entries-table td {
+    display: block;
+    width: 100%;
+  }
+
+  #entries-table tr {
+    background: #0b1329 !important; 
+    margin-bottom: 16px;
+    padding: 12px;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+
+  #entries-table td {
+    text-align: left; 
+    padding: 6px 4px;
+    border-bottom: none;
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    font-size: 0.85rem;
+  }
+
+  #entries-table td::before {
+    content: attr(data-label); 
+    font-weight: 600;
+    color: #9ca3af;
+    margin-right: 8px;
+  }
+
+  .action-btn {
+    margin-top: 4px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    flex: 1; 
+    text-align: center;
+  }
+  
+  #entries-table td:last-child {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    padding-top: 10px;
+    border-top: 1px solid #1e293b; 
+  }
+
+  /* Centrage du Toast sur Mobile */
+  #toast {
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    text-align: center;
+  }
+
+
+}
