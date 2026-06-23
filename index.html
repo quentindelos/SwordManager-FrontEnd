@@ -1,96 +1,129 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <title>SwordManager - Client Cloud Zero-Knowledge</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <div id="toast" class="toast-hidden"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <title>SwordManager - Client Cloud Zero-Knowledge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="toast" class="toast-hidden"></div>
 
-  <div id="app">
-    <h1>🛡️ SwordManager</h1>
+    <div id="app">
+      <h1>🛡️ SwordManager</h1>
 
-    <div id="master-screen">
-      <h2>Déverrouiller ou créer un coffre</h2>
-      <p>Entrez vos identifiants pour accéder à votre espace Cloud chiffré.</p>
-      
-      <div class="field">
-        <label for="master-email">Adresse Email</label>
-        <input type="email" id="master-email" placeholder="exemple@domaine.com" value="test@example.com" />
-      </div>
-      
-      <div class="field">
-        <label for="master-password">Mot de passe maître</label>
-        <input type="password" id="master-password" placeholder="Mot de passe maître" value="mon_master_password" />
-      </div>
+      <div id="master-screen">
+        <h2>Déverrouiller ou Créer un coffre</h2>
+        <p>
+          Entrez vos identifiants pour accéder à votre espace Cloud chiffré.
+        </p>
 
-      <div style="display: flex; gap: 8px; margin-top: 15px;">
-        <button id="unlock-btn">Se connecter</button>
-        <button id="register-btn" style="background: #059669;">S'inscrire</button>
-      </div>
-
-      <p class="hint" style="margin-top: 15px;">
-        Le coffre est stocké dans le cloud mais déchiffré localement. Votre mot de passe maître ne quitte jamais votre machine.
-      </p>
-      <p id="master-error" class="error"></p>
-    </div>
-
-    <div id="vault-screen" class="hidden">
-      <div class="toolbar">
-        <button id="lock-btn">Verrouiller</button>
-      </div>
-
-      <h2>Mes identifiants</h2>
-
-      <div class="search-bar">
-        <input type="text" id="search-input" placeholder="Rechercher par nom de site..." />
-      </div>
-
-      <table id="entries-table">
-        <thead>
-          <tr>
-            <th>Nom</th>
-            <th>URL</th>
-            <th>Identifiant</th>
-            <th>Mot de passe</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="entries-body">
-          </tbody>
-      </table>
-
-      <h3>Ajouter / Modifier une entrée</h3>
-      <form id="entry-form">
-        <input type="hidden" id="entry-id" />
         <div class="field">
-          <label>Nom</label>
-          <input type="text" id="entry-name" required />
+          <label for="master-email">Adresse Email</label>
+          <input
+            type="email"
+            id="master-email"
+            placeholder="exemple@domaine.com"
+            aria-placeholder="test@example.com"
+          />
         </div>
+
         <div class="field">
-          <label>URL</label>
-          <input type="url" id="entry-url" />
+          <label for="master-password">Mot de passe maître</label>
+          <input
+            type="password"
+            id="master-password"
+            placeholder="Mot de passe maître"
+            aria-placeholder="mon_master_password"
+          />
         </div>
-        <div class="field">
-          <label>Identifiant</label>
-          <input type="text" id="entry-username" />
+
+        <div style="display: flex; gap: 8px; margin-top: 15px">
+          <button id="unlock-btn">Se connecter</button>
+          <button id="register-btn" style="background: #059669">
+            S'inscrire
+          </button>
         </div>
-        <div class="field">
-          <label>Mot de passe</label>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="entry-password" style="flex: 1;" />
-            <button type="button" id="generate-btn">Générer</button>
+
+        <p class="hint" style="margin-top: 15px">
+          Le coffre est stocké dans le cloud mais déchiffré localement. Votre
+          mot de passe maître ne quitte jamais votre machine.
+        </p>
+        <p id="master-error" class="error"></p>
+      </div>
+
+      <div id="vault-screen" class="hidden">
+        <div class="toolbar">
+          <button id="lock-btn">Verrouiller</button>
+        </div>
+
+        <h2>Mes identifiants</h2>
+
+        <div class="search-bar">
+          <input
+            type="text"
+            id="search-input"
+            placeholder="Rechercher par nom de site..."
+          />
+        </div>
+
+        <div class="table-container">
+          <table id="entries-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>URL</th>
+                <th>Identifiant</th>
+                <th>Mot de passe</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="entries-body"></tbody>
+          </table>
+        </div>
+
+        <div style="margin: 20px 0; text-align: center">
+          <button
+            type="button"
+            id="toggle-form-btn"
+            style="background: #2563eb; width: 100%; font-weight: 600"
+          >
+            ➕ Ajouter un identifiant
+          </button>
+        </div>
+
+        <form id="entry-form" class="hidden">
+          <h3>Ajouter / Modifier une entrée</h3>
+          <input type="hidden" id="entry-id" />
+          <div class="field">
+            <label>Nom</label>
+            <input type="text" id="entry-name" required />
           </div>
-        </div>
-        <div style="margin-top: 15px;">
-          <button type="submit" id="submit-entry-btn">Enregistrer</button>
-          <button type="button" id="reset-form-btn">Annuler</button>
-        </div>
-      </form>
-    </div>
-  </div>
+          <div class="field">
+            <label>URL</label>
+            <input type="url" id="entry-url" />
+          </div>
+          <div class="field">
+            <label>Identifiant</label>
+            <input type="text" id="entry-username" />
+          </div>
 
-  <script src="app.js"></script>
-</body>
+          <div class="field">
+            <label>Mot de passe</label>
+            <div class="password-container">
+              <input type="text" id="entry-password" />
+              <button type="button" id="generate-btn">Générer</button>
+            </div>
+            <div id="password-strength" class="strength-bar"></div>
+          </div>
+          <div style="margin-top: 15px">
+            <button type="submit" id="submit-entry-btn">Enregistrer</button>
+            <button type="button" id="reset-form-btn">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
 </html>
