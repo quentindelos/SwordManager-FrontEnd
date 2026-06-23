@@ -1,7 +1,6 @@
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:3000" 
     : "https://api.swordmanager.cloud"
-    : "/api";
 
 
 // État de session strict en mémoire volatile
