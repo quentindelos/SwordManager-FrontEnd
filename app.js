@@ -1,6 +1,6 @@
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:3000" 
-    : "https://api.swordmanager.cloud"
+    : "https://api.swordmanager.cloud";
 
 // État de session strict en mémoire volatile
 let vaultEntries = [];
@@ -18,7 +18,6 @@ const masterError = document.getElementById("master-error");
 const lockBtn = document.getElementById("lock-btn");
 const toggleFormBtn = document.getElementById("toggle-form-btn");
 
-
 const searchInput = document.getElementById("search-input");
 const entriesBody = document.getElementById("entries-body");
 
@@ -33,6 +32,7 @@ const resetFormBtn = document.getElementById("reset-form-btn");
 const genNumbersCheck = document.getElementById("gen-numbers");
 const genSpecialsCheck = document.getElementById("gen-specials");
 const submitEntryBtn = document.getElementById("submit-entry-btn");
+const strengthBar = document.getElementById("password-strength");
 
 // UTILS : ENCODAGE & TOAST
 function strToArrayBuffer(str) { return new TextEncoder().encode(str); }
@@ -53,9 +53,19 @@ function base64ToBuf(base64) {
 
 function showToast(message) {
   const toast = document.getElementById("toast");
+  if (!toast) return;
   toast.innerText = message;
   toast.className = "toast-visible";
   setTimeout(() => { toast.className = "toast-hidden"; }, 4000);
+}
+
+// Fonction asynchrone isolée pour calculer le SHA-1 local (requis pour RockYou API)
+async function sha1(str) {
+  const buf = new TextEncoder().encode(str);
+  const hashBuf = await crypto.subtle.digest("SHA-1", buf);
+  return Array.from(new Uint8Array(hashBuf))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("").toUpperCase();
 }
 
 // SÉCURITÉ : AUTO-LOCK (5 min d'inactivité)
@@ -117,9 +127,32 @@ async function decryptString(data, key) {
   return arrayBufferToStr(plaintextBuf);
 }
 
-//VALIDATIONS CLIENTS 
+// VALIDATIONS CLIENTS 
 function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// ANALYSEUR DE FORCE VISUEL EN TEMPS RÉEL (SANS TOAST AGACANT)
+function checkPasswordStrength(password) {
+  if (!strengthBar) return;
+  strengthBar.className = "strength-bar";
+
+  if (!password) return;
+
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 14) score++;
+  if (/\d/.test(password)) score++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  if (score <= 2) {
+    strengthBar.classList.add("weak"); // Rouge
+  } else if (score <= 4) {
+    strengthBar.classList.add("medium"); // Orange
+  } else {
+    strengthBar.classList.add("strong"); // Vert
+  }
 }
 
 // ACTIONS API RESTRUCTURÉES
@@ -163,7 +196,6 @@ async function handleRegister() {
     }
   } catch (e) {
     console.error(e);
-    // Si l'erreur est provoquée par fetch(), c'est que le serveur Node (port 3000) est déconnecté
     if (e instanceof TypeError && e.message.includes('fetch')) {
       masterError.textContent = "Impossible de joindre le serveur Cloud. Lancez 'node index.js' sur le port 3000 !";
     } else {
@@ -194,7 +226,6 @@ async function handleLogin() {
   try {
     const { encryptionKey, authHash } = await deriveKeys(pwd, email);
 
-    // 1. Appel réseau vers l'API d'authentification d'abord
     const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -202,37 +233,28 @@ async function handleLogin() {
     });
     const data = await res.json();
 
-    // 2. Vérification du statut de la réponse
     if (!res.ok || !data.token) {
       masterError.textContent = data.error || "Identifiants erronés.";
       return;
     }
 
-    // 3. Extraction des données une fois la connexion validée
     userToken = data.token;
     const rawKeyB64 = await decryptString(data.protectedKey, encryptionKey);
     
-    // 🛠️ SÉCURITÉ & PERSISTANCE : Sauvegarde temporaire pour le rafraîchissement (Max 1h)
+    // PERSISTANCE : Sauvegarde temporaire (Max 15 min)
     const sessionData = {
       token: userToken,
       keyB64: rawKeyB64,
-      expiresAt: Date.now() + (15  * 60 * 1000) // Heure actuelle + 1 heure
+      expiresAt: Date.now() + (15 * 60 * 1000)
     };
     sessionStorage.setItem("sword_session", JSON.stringify(sessionData));
 
-    // 4. Importation de la clé en mémoire volatile
     vaultKey = await crypto.subtle.importKey(
-      "raw",
-      base64ToBuf(rawKeyB64),
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"],
+      "raw", base64ToBuf(rawKeyB64), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]
     );
 
-    // 5. Récupération des secrets du coffre
     await fetchVaultItems();
 
-    // Nettoyage de l'interface et bascule d'écran
     masterPasswordInput.value = "";
     masterScreen.classList.add("hidden");
     vaultScreen.classList.remove("hidden");
@@ -276,7 +298,7 @@ async function fetchVaultItems() {
   }
 }
 
-// UI : AFFICHAGE AVEC CELLULES SÉCURISÉES
+// UI : AFFICHAGE
 function renderEntries(filter = "") {
   entriesBody.innerHTML = "";
   const lowerFilter = filter.trim().toLowerCase();
@@ -300,7 +322,6 @@ function renderEntries(filter = "") {
       }
       tr.appendChild(tdUrl);
 
-      // 🛠️ BLOC IDENTIFIANT MODIFIÉ AVEC BOUTON COPIE RAPIDE
       const tdUsername = document.createElement("td");
       tdUsername.setAttribute("data-label", "Identifiant");
       
@@ -308,10 +329,9 @@ function renderEntries(filter = "") {
       usernameSpan.textContent = entry.username || "";
       tdUsername.appendChild(usernameSpan);
 
-      // On n'affiche le bouton de copie que si un identifiant existe
       if (entry.username) {
         const copyUserBtn = document.createElement("button");
-        copyUserBtn.className = "toggle-pw-btn"; // Réutilise ton style discret avec bordure
+        copyUserBtn.className = "toggle-pw-btn";
         copyUserBtn.textContent = "📋";
         copyUserBtn.title = "Copier l'identifiant";
         copyUserBtn.style.marginLeft = "8px";
@@ -325,7 +345,6 @@ function renderEntries(filter = "") {
       }
       tr.appendChild(tdUsername);
 
-      // Système d'affichage par bouton œil
       const tdPassword = document.createElement("td");
       tdPassword.setAttribute("data-label", "Mot de passe");
       const pwSpan = document.createElement("span");
@@ -348,13 +367,12 @@ function renderEntries(filter = "") {
       tdPassword.appendChild(toggleBtn);
       tr.appendChild(tdPassword);
 
-      // Actions : Édition / Copie / Suppression
       const tdActions = document.createElement("td");
       tdActions.setAttribute("data-label", "Actions");
       
       const copyBtn = document.createElement("button");
       copyBtn.textContent = "Copier";
-      copyBtn.className = "action-btn edit"; // Réutilise ton style vert
+      copyBtn.className = "action-btn edit";
       copyBtn.addEventListener("click", () => { copyToClipboard(entry.password); });
 
       const editBtn = document.createElement("button");
@@ -392,7 +410,6 @@ function copyToClipboard(text) {
   navigator.clipboard.writeText(text).then(() => {
     showToast("📋 Copié ! Le presse-papiers sera nettoyé dans 30 secondes.");
     
-    // Nettoyage automatique du presse-papiers
     setTimeout(() => {
       navigator.clipboard.readText().then(currentText => {
         if (currentText === text) {
@@ -405,18 +422,13 @@ function copyToClipboard(text) {
 }
 
 function handleLogout() {
-  // 1. 🛠️ NETTOYAGE : Supprime immédiatement la session du navigateur (sessionStorage)
   sessionStorage.removeItem("sword_session"); 
-
-  // 2. Réinitialisation des variables globales en mémoire volatile
   userToken = null;
   vaultKey = null;
   vaultEntries = [];
 
-  // 3. Destruction des écouteurs d'inactivité (Auto-lock)
   destroySecurityListeners();
 
-  // 4. Gestion de l'interface visuelle (Bascule d'écran)
   vaultScreen.classList.add("hidden");
   masterScreen.classList.remove("hidden");
   masterError.style.color = "#9ca3af";
@@ -431,11 +443,8 @@ function resetForm() {
   entryPasswordInput.value = "";
   submitEntryBtn.textContent = "Enregistrer"; 
   
-  if (document.getElementById('password-strength')) {
-    document.getElementById('password-strength').className = 'strength-bar';
-  }
+  if (strengthBar) strengthBar.className = 'strength-bar';
 
-  // 🛠️ AJOUT : Ferme automatiquement le formulaire et réinitialise le bouton
   entryForm.classList.add("hidden");
   toggleFormBtn.textContent = "➕ Ajouter un identifiant";
   toggleFormBtn.style.background = "#2563eb"; 
@@ -453,7 +462,6 @@ function loadEntryIntoForm(index) {
   submitEntryBtn.textContent = "Mettre à jour"; 
   checkPasswordStrength(entry.password || "");
 
-  // 🛠️ AJOUT : Ouvre le formulaire pour l'édition et change le style du bouton
   entryForm.classList.remove("hidden");
   toggleFormBtn.textContent = "❌ Fermer le formulaire";
   toggleFormBtn.style.background = "#6b7280"; 
@@ -461,33 +469,36 @@ function loadEntryIntoForm(index) {
   window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 
-// ÉVÈNEMENT
+// ÉVÉNEMENTS GENERAUX
 unlockBtn.addEventListener("click", handleLogin);
 registerBtn.addEventListener("click", handleRegister);
 lockBtn.addEventListener("click", handleLogout);
 searchInput.addEventListener("input", () => { renderEntries(searchInput.value); });
+resetFormBtn.addEventListener("click", resetForm);
 
+entryPasswordInput.addEventListener("input", (e) => {
+  checkPasswordStrength(e.target.value);
+});
+
+// ÉVÉNEMENT DU SUBMIT (AVEC FILTRE DE VÉRIFICATION ROCKYOU)
 entryForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const inputPassword = entryPasswordInput.value;
 
-// 1. VÉRIFICATION DE COMPROMISSION ROCKYOU VIA API (AU SUBMIT)
   if (inputPassword) {
     try {
       const hash = await sha1(inputPassword);
       const prefix = hash.slice(0, 5);
       const suffix = hash.slice(5);
 
-      // Requête K-Anonymity vers Have I Been Pwned
       const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
       if (res.ok) {
         const text = await res.text();
         const isPwned = text.split("\n").some(line => line.startsWith(suffix));
 
-// Blocage et affichage du toast de 10 secondes si trouvé dans RockYou
         if (isPwned) {
-          strengthBar.className = "strength-bar weak"; // Force la jauge en rouge
+          if (strengthBar) strengthBar.className = "strength-bar weak"; 
           
           const localTrollMessages = [
             "Tu ne vas pas mettre ce mot de passe quand même... ? 😒",
@@ -511,7 +522,7 @@ entryForm.addEventListener("submit", async (e) => {
             "Même l'authentification de mon vieux routeur de 2004 refuserait un truc pareil. 🔌",
             "Un script d'une ligne en Python trouverait ça en moins de deux millisecondes. 🐍",
             "C'est un mot de passe ou un code de carte fidélité ? Sois sérieux deux minutes. 🛒",
-            "Tu as confused l'option 'Créer un mot de passe' avec 'Donner mes données au premier venu'. 🎁",
+            "Tu as confondu l'option 'Créer un mot de passe' avec 'Donner mes données au premier venu'. 🎁",
             "Si j'étais un rançongiciel, je t'enverrais un message de remerciement. 🏴‍☠️",
             "Je crois que la jauge de force vient de faire une dépression nerveuse. 📉",
             "Mettre ça, c'est comme laisser la clé sur la serrure avec un panneau 'Entrez c'est ouvert'. 🚪",
@@ -521,36 +532,32 @@ entryForm.addEventListener("submit", async (e) => {
           
           const randomPhrase = localTrollMessages[Math.floor(Math.random() * localTrollMessages.length)];
           
-          // Toast persistant longue durée (10s)
           const toast = document.getElementById("toast");
-          toast.innerText = `🛑 Refusé ! ${randomPhrase}`;
-          toast.className = "toast-visible";
+          if (toast) {
+            toast.innerText = `🛑 Refusé ! ${randomPhrase}`;
+            toast.className = "toast-visible";
+            setTimeout(() => { toast.className = "toast-hidden"; }, 10000);
+          }
           
-          setTimeout(() => { 
-            toast.className = "toast-hidden"; 
-          }, 10000);
-          
-          return; // 🛑 Arrête l'envoi vers le cloud
+          return; // 🛑 BLOQUÉ
         }
       }
     } catch (err) {
-      // En cas de vrai problème réseau avec l'API, on affiche l'erreur en console pour debug
       console.error("Erreur lors de la vérification API RockYou :", err);
     }
   }
 
-  // 2. LOGIQUE DE CHIFFREMENT ET D'ENVOI SI LE MOT DE PASSE EST SÛR
+  // LOGIQUE DE CHIFFREMENT ET D'ENVOI SI OK
   submitEntryBtn.disabled = true;
   const entryId = entryIdInput.value;
 
-  // 🛠️ NETTOYAGE ET AJOUT AUTOMATIQUE DU HTTPS://
   let rawUrl = entryUrlInput.value.trim();
   if (rawUrl && !/^https?:\/\//i.test(rawUrl)) {
     rawUrl = "https://" + rawUrl;
   }
 
   const entryDataClear = {
-    url: rawUrl, // Utilisation de l'URL nettoyée
+    url: rawUrl, 
     username: entryUsernameInput.value.trim(),
     password: entryPasswordInput.value,
   };
@@ -562,10 +569,7 @@ entryForm.addEventListener("submit", async (e) => {
   }
 
   try {
-    const encryptedData = await encryptString(
-      JSON.stringify(entryDataClear),
-      vaultKey,
-    );
+    const encryptedData = await encryptString(JSON.stringify(entryDataClear), vaultKey);
 
     let res;
     if (entryId) {
@@ -575,12 +579,7 @@ entryForm.addEventListener("submit", async (e) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${userToken}`,
         },
-        body: JSON.stringify({
-          type: "login",
-          label,
-          encryptedData,
-          folder: null,
-        }),
+        body: JSON.stringify({ type: "login", label, encryptedData, folder: null }),
       });
     } else {
       res = await fetch(`${API_URL}/vault`, {
@@ -589,12 +588,7 @@ entryForm.addEventListener("submit", async (e) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${userToken}`,
         },
-        body: JSON.stringify({
-          type: "login",
-          label,
-          encryptedData,
-          folder: null,
-        }),
+        body: JSON.stringify({ type: "login", label, encryptedData, folder: null }),
       });
     }
 
@@ -602,11 +596,7 @@ entryForm.addEventListener("submit", async (e) => {
       await fetchVaultItems();
       resetForm();
       renderEntries(searchInput.value);
-      showToast(
-        entryId
-          ? "🔄 Identifiant mis à jour !"
-          : "💾 Synchronisé avec le Cloud.",
-      );
+      showToast(entryId ? "🔄 Identifiant mis à jour !" : "💾 Synchronisé avec le Cloud.");
     } else {
       alert("Échec de synchronisation.");
     }
@@ -617,71 +607,15 @@ entryForm.addEventListener("submit", async (e) => {
   }
 });
 
+// ÉCOUTEUR DU BOUTON GÉNÉRER (CRYPTOGRAPHIQUEMENT SECURE ET CONDITIONNEL)
 generateBtn.addEventListener("click", () => {
-  setTimeout(() => {
-    checkPasswordStrengthVisual(entryPasswordInput.value);
-  }, 10);
-});
-
-resetFormBtn.addEventListener("click", resetForm);
-
-// ==========================================================================
-// 🛡️ ANALYSEUR DE FORCE DU MOT DE PASSE
-// ==========================================================================
-const strengthBar = document.getElementById("password-strength");
-
-function checkPasswordStrength(password) {
-  // On réinitialise la classe de la barre
-  strengthBar.className = "strength-bar";
-
-  // Si le champ est vide, la barre disparaît
-  if (!password) return;
-
-  let score = 0;
-
-  // Critère 1 : Longueur
-  if (password.length >= 8) score++;
-  if (password.length >= 14) score++;
-
-  // Critère 2 : Présence de chiffres
-  if (/\d/.test(password)) score++;
-
-  // Critère 3 : Présence de majuscules et minuscules
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-
-  // Critère 4 : Présence de caractères spéciaux
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-
-  // Attribution de la couleur/largeur selon le score calculé
-  if (score <= 2) {
-    strengthBar.classList.add("weak"); // Rouge
-  } else if (score <= 4) {
-    strengthBar.classList.add("medium"); // Orange
-  } else {
-    strengthBar.classList.add("strong"); // Vert
-  }
-}
-
-// Écouteur sur la saisie manuelle au clavier
-entryPasswordInput.addEventListener("input", (e) => {
-  checkPasswordStrength(e.target.value);
-});
-
-// ==========================================================================
-// 🎲 ÉCOUTEUR DU BOUTON GÉNÉRER (VERSION FINALE PROD)
-// ==========================================================================
-generateBtn.addEventListener("click", () => {
-  // 1. Génération du mot de passe en fonction des cases cochées
   entryPasswordInput.value = (() => {
     let allowedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     
-    const chkNumbers = document.getElementById("gen-numbers");
-    const chkSpecials = document.getElementById("gen-specials");
-
-    if (!chkNumbers || chkNumbers.checked) {
+    if (genNumbersCheck && genNumbersCheck.checked) {
       allowedChars += "0123456789";
     }
-    if (!chkSpecials || chkSpecials.checked) {
+    if (genSpecialsCheck && genSpecialsCheck.checked) {
       allowedChars += "()_-,?:§!@#$%^&*=+";
     }
     
@@ -695,68 +629,26 @@ generateBtn.addEventListener("click", () => {
     return pw;
   })();
   
-  // 2. Ton mini timeout de 10ms pour recalculer la jauge de force
   setTimeout(() => {
-    if (typeof checkPasswordStrength === "function") {
-      checkPasswordStrength(entryPasswordInput.value);
-    }
+    checkPasswordStrength(entryPasswordInput.value);
   }, 10);
 
   showToast("🎲 Mot de passe personnalisé généré.");
 });
 
-// ==========================================================================
-// 🔄 LOGIQUE D'AFFICHAGE DU FORMULAIRE (TOGGLE)
-// ==========================================================================
+// LOGIQUE D'AFFICHAGE DU FORMULAIRE (TOGGLE)
 toggleFormBtn.addEventListener("click", () => {
   if (entryForm.classList.contains("hidden")) {
-    // Si le formulaire est caché, on l'affiche
     entryForm.classList.remove("hidden");
     toggleFormBtn.textContent = "❌ Fermer le formulaire";
-    toggleFormBtn.style.background = "#6b7280"; // Passe en gris discret
-
-    // Défilement fluide vers le formulaire pour le confort visuel
+    toggleFormBtn.style.background = "#6b7280"; 
     entryForm.scrollIntoView({ behavior: "smooth" });
   } else {
-    // S'il est déjà ouvert, on appelle resetForm() qui va le nettoyer et le cacher
     resetForm();
   }
 });
-// ==========================================================================
-// 🛡️ ANALYSEUR DE FORCE VISUEL
-// ==========================================================================
-function checkPasswordStrengthVisual(password) {
-  strengthBar.className = "strength-bar";
-  if (!password) return;
 
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (password.length >= 14) score++;
-  if (/\d/.test(password)) score++;
-  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-
-  if (score <= 2) strengthBar.classList.add("weak");
-  else if (score <= 4) strengthBar.classList.add("medium");
-  else strengthBar.classList.add("strong");
-}
-
-// Fonction asynchrone isolée pour calculer le SHA-1 local (requis pour RockYou API)
-async function sha1(str) {
-  const buf = new TextEncoder().encode(str);
-  const hashBuf = await crypto.subtle.digest("SHA-1", buf);
-  return Array.from(new Uint8Array(hashBuf))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("").toUpperCase();
-}
-
-entryPasswordInput.addEventListener("input", (e) => {
-  checkPasswordStrengthVisual(e.target.value);
-});
-
-// ==========================================================================
-// 🔄 RESTAURATION AUTOMATIQUE DE SESSION AU REFRESH (F5)
-// ==========================================================================
+// RESTAURATION AUTOMATIQUE DE SESSION (F5)
 window.addEventListener("DOMContentLoaded", async () => {
   const cachedSession = sessionStorage.getItem("sword_session");
   if (!cachedSession) return; 
