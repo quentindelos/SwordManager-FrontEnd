@@ -667,13 +667,44 @@ entryPasswordInput.addEventListener("input", (e) => {
   checkPasswordStrength(e.target.value);
 });
 
-// Écouteur lors du clic sur le bouton "Générer"
+// ==========================================================================
+// 🎲 ÉCOUTEUR DU BOUTON GÉNÉRER (VERSION FINALE PROD)
+// ==========================================================================
 generateBtn.addEventListener("click", () => {
-  // Un mini timeout de 10ms permet de s'assurer que l'input a bien reçu la valeur générée avant de calculer
+  // 1. Génération du mot de passe en fonction des cases cochées
+  entryPasswordInput.value = (() => {
+    let allowedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    
+    const chkNumbers = document.getElementById("gen-numbers");
+    const chkSpecials = document.getElementById("gen-specials");
+
+    if (!chkNumbers || chkNumbers.checked) {
+      allowedChars += "0123456789";
+    }
+    if (!chkSpecials || chkSpecials.checked) {
+      allowedChars += "()_-,?:§!@#$%^&*=+";
+    }
+    
+    let pw = "";
+    const array = new Uint8Array(16);
+    crypto.getRandomValues(array);
+    
+    for (let i = 0; i < 16; i++) {
+      pw += allowedChars[array[i] % allowedChars.length];
+    }
+    return pw;
+  })();
+  
+  // 2. Ton mini timeout de 10ms pour recalculer la jauge de force
   setTimeout(() => {
-    checkPasswordStrength(entryPasswordInput.value);
+    if (typeof checkPasswordStrength === "function") {
+      checkPasswordStrength(entryPasswordInput.value);
+    }
   }, 10);
+
+  showToast("🎲 Mot de passe personnalisé généré.");
 });
+
 // ==========================================================================
 // 🔄 LOGIQUE D'AFFICHAGE DU FORMULAIRE (TOGGLE)
 // ==========================================================================
