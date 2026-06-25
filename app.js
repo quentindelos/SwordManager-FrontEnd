@@ -472,46 +472,46 @@ entryForm.addEventListener("submit", async (e) => {
 
   const inputPassword = entryPasswordInput.value;
 
-  // 1. VÉRIFICATION DE COMPROMISSION ROCKYOU VIA API (AU SUBMIT)
+// 1. VÉRIFICATION DE COMPROMISSION ROCKYOU VIA API (AU SUBMIT)
   if (inputPassword) {
     try {
-      // Calcul du hash SHA-1 local
       const hash = await sha1(inputPassword);
       const prefix = hash.slice(0, 5);
       const suffix = hash.slice(5);
 
-      // Requête K-Anonymity vers Have I Been Pwned
       const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
       if (res.ok) {
         const text = await res.text();
-        const isPwned = text
-          .split("\n")
-          .some((line) => line.startsWith(suffix));
+        const isPwned = text.split("\n").some(line => line.startsWith(suffix));
 
-        // Blocage et affichage du toast de 10 secondes si trouvé dans RockYou
         if (isPwned) {
           strengthBar.className = "strength-bar weak"; // Force la jauge en rouge
-
-          const randomPhrase =
-            trollMessages[Math.floor(Math.random() * trollMessages.length)];
-
-          // Toast persistant longue durée (10s)
+          
+          // Tableau intégré directement ici pour éviter les erreurs de variables globales indéfinies
+          const localTrollMessages = [
+            "Tu ne vas pas mettre ce mot de passe quand même... ? 😒",
+            "Allez, encore un effort... ! 💪",
+            "Même mon chat tape un meilleur mot de passe que ça. 🐱",
+            "Un hacker rigole déjà en voyant ça. 🏴‍☠️",
+            "Ce mot de passe est dans RockYou. Autant ne rien mettre... 💀"
+          ];
+          
+          const randomPhrase = localTrollMessages[Math.floor(Math.random() * localTrollMessages.length)];
+          
           const toast = document.getElementById("toast");
           toast.innerText = `🛑 Refusé ! ${randomPhrase}`;
           toast.className = "toast-visible";
-
-          setTimeout(() => {
-            toast.className = "toast-hidden";
+          
+          setTimeout(() => { 
+            toast.className = "toast-hidden"; 
           }, 10000);
-
-          return; // Arrête l'envoi immédiat vers le cloud
+          
+          return; // 🛑 BLOQUÉ : On sort immédiatement de la fonction, l'envoi est avorté
         }
       }
     } catch (err) {
-      console.error(
-        "Impossible de valider la blacklist (API inaccessible) :",
-        err,
-      );
+      // En cas de vrai problème réseau avec l'API, on affiche l'erreur en console pour debug
+      console.error("Erreur lors de la vérification API RockYou :", err);
     }
   }
 
