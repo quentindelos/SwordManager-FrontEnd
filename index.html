@@ -101,7 +101,7 @@
           </div>
           <div class="field">
             <label>URL</label>
-            <input type="url" id="entry-url" />
+            <input type="text" id="entry-url" placeholder="Ex: google.com" />
           </div>
           <div class="field">
             <label>Identifiant</label>
@@ -109,13 +109,24 @@
           </div>
 
           <div class="field">
-            <label>Mot de passe</label>
-            <div class="password-container">
-              <input type="text" id="entry-password" />
-              <button type="button" id="generate-btn">Générer</button>
-            </div>
-            <div id="password-strength" class="strength-bar"></div>
+          <div class="field">
+          <label>Mot de passe</label>
+          <div class="password-container"> 
+            <input type="text" id="entry-password" /> 
+            <button type="button" id="generate-btn">Générer</button>
           </div>
+          
+          <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.9em; color: #9ca3af;">
+            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+              <input type="checkbox" id="gen-numbers" checked /> Chiffres
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+              <input type="checkbox" id="gen-specials" checked /> Caractères spéciaux
+            </label>
+          </div>
+          
+          <div id="password-strength" class="strength-bar"></div>
+        </div>
           <div style="margin-top: 15px">
             <button type="submit" id="submit-entry-btn">Enregistrer</button>
             <button type="button" id="reset-form-btn">Annuler</button>
