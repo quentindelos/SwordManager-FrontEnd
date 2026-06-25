@@ -485,40 +485,39 @@ entryForm.addEventListener("submit", async (e) => {
         const text = await res.text();
         const isPwned = text.split("\n").some(line => line.startsWith(suffix));
 
-        // Blocage et affichage du toast de 10 secondes si trouvé dans RockYou
+// Blocage et affichage du toast de 10 secondes si trouvé dans RockYou
         if (isPwned) {
           strengthBar.className = "strength-bar weak"; // Force la jauge en rouge
           
-          // 🛠️ FIX : Le tableau est défini DIRECTEMENT ici, impossible de l'isoler
           const localTrollMessages = [
-  "Tu ne vas pas mettre ce mot de passe quand même... ? 😒",
-  "Allez, encore un effort... ! 💪",
-  "Même mon chat tape un meilleur mot de passe que ça. 🐱",
-  "Un hacker rigole déjà en voyant ça. 🏴‍☠️",
-  "Ce mot de passe est plus connu que la recette des crêpes. 🥞",
-  "Zéro effort décelé. Réessaie encore. 🛑",
-  "Ce mot de passe est dans RockYou. Autant ne rien mettre à ce stade... 💀",
-  "Franchement, j'ai vu des passoires plus étanches que ce mot de passe. 🚰",
-"Même en 1995, ce mot de passe était déjà considéré comme périmé. 📅",
-"Félicitations, tu viens de choisir le mot de passe préféré des bots russes. 🤖",
-"Un peu d'originalité s'il te plaît, ma base de données s'endort... 💤",
-"Si la paresse avait un mot de passe, ce serait exactement celui-là. 🦥",
-"Tu as trouvé ça dans un biscuit de la fortune ou c'est naturel ? 🥠",
-"Le chiffrement AES-GCM 256 bits mérite mieux que d'abriter ça... ⚖️",
-"Je refuse de synchroniser un truc pareil sur GCP, question d'honneur. ☁️",
-"Erreur 404 : Imagination introuvable. Essaie encore ! 🔍",
-"Même pas besoin d'IA pour deviner ça, un enfant de 4 ans y arrive. 👶",
-"À ce niveau-là, laisse la porte ouverte et donne directement les clés. 🔑",
-"Même l'authentification de mon vieux routeur de 2004 refuserait un truc pareil. 🔌",
-"Un script d'une ligne en Python trouverait ça en moins de deux millisecondes. 🐍",
-"C'est un mot de passe ou un code de carte fidélité ? Sois sérieux deux minutes. 🛒",
-"Tu as confondu l'option 'Créer un mot de passe' avec 'Donner mes données au premier venu'. 🎁",
-"Si j'étais un rançongiciel, je t'enverrais un message de remerciement. 🏴‍☠️",
-"Je crois que la jauge de force vient de faire une dépression nerveuse. 📉",
-"Mettre ça, c'est comme laisser la clé sur la serrure avec un panneau 'Entrez c'est ouvert'. 🚪",
-"Ton niveau d'imagination est actuellement plus bas que la sécurité d'un objet connecté chinois. 📡",
-"Même une attaque par dictionnaire hors-ligne plierait l'affaire avant que j'aie le temps de cligner des yeux. ⚡"
-];
+            "Tu ne vas pas mettre ce mot de passe quand même... ? 😒",
+            "Allez, encore un effort... ! 💪",
+            "Même mon chat tape un meilleur mot de passe que ça. 🐱",
+            "Un hacker rigole déjà en voyant ça. 🏴‍☠️",
+            "Ce mot de passe est plus connu que la recette des crêpes. 🥞",
+            "Zéro effort décelé. Réessaie encore. 🛑",
+            "Ce mot de passe est dans RockYou. Autant ne rien mettre à ce stade... 💀",
+            "Franchement, j'ai vu des passoires plus étanches que ce mot de passe. 🚰",
+            "Même en 1995, ce mot de passe était déjà considéré comme périmé. 📅",
+            "Félicitations, tu viens de choisir le mot de passe préféré des bots russes. 🤖",
+            "Un peu d'originalité s'il te plaît, ma base de données s'endort... 💤",
+            "Si la paresse avait un mot de passe, ce serait exactement celui-là. 🦥",
+            "Tu as trouvé ça dans un biscuit de la fortune ou c'est naturel ? 🥠",
+            "Le chiffrement AES-GCM 256 bits mérite mieux que d'abriter ça... ⚖️",
+            "Je refuse de synchroniser un truc pareil sur GCP, question d'honneur. ☁️",
+            "Erreur 404 : Imagination introuvable. Essaie encore ! 🔍",
+            "Même pas besoin d'IA pour deviner ça, un enfant de 4 ans y arrive. 👶",
+            "À ce niveau-là, laisse la porte ouverte et donne directement les clés. 🔑",
+            "Même l'authentification de mon vieux routeur de 2004 refuserait un truc pareil. 🔌",
+            "Un script d'une ligne en Python trouverait ça en moins de deux millisecondes. 🐍",
+            "C'est un mot de passe ou un code de carte fidélité ? Sois sérieux deux minutes. 🛒",
+            "Tu as confused l'option 'Créer un mot de passe' avec 'Donner mes données au premier venu'. 🎁",
+            "Si j'étais un rançongiciel, je t'enverrais un message de remerciement. 🏴‍☠️",
+            "Je crois que la jauge de force vient de faire une dépression nerveuse. 📉",
+            "Mettre ça, c'est comme laisser la clé sur la serrure avec un panneau 'Entrez c'est ouvert'. 🚪",
+            "Ton niveau d'imagination est actuellement plus bas que la sécurité d'un objet connecté chinois. 📡",
+            "Même une attaque par dictionnaire hors-ligne plierait l'affaire avant que j'aie le temps de cligner des yeux. ⚡"
+          ];
           
           const randomPhrase = localTrollMessages[Math.floor(Math.random() * localTrollMessages.length)];
           
@@ -531,7 +530,7 @@ entryForm.addEventListener("submit", async (e) => {
             toast.className = "toast-hidden"; 
           }, 10000);
           
-          return; // 🛑 BLOQUÉ : On quitte la fonction immédiatement, rien n'est envoyé au serveur !
+          return; // 🛑 Arrête l'envoi vers le cloud
         }
       }
     } catch (err) {
