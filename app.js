@@ -479,15 +479,17 @@ entryForm.addEventListener("submit", async (e) => {
       const prefix = hash.slice(0, 5);
       const suffix = hash.slice(5);
 
+      // Requête K-Anonymity vers Have I Been Pwned
       const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
       if (res.ok) {
         const text = await res.text();
         const isPwned = text.split("\n").some(line => line.startsWith(suffix));
 
+        // Blocage et affichage du toast de 10 secondes si trouvé dans RockYou
         if (isPwned) {
           strengthBar.className = "strength-bar weak"; // Force la jauge en rouge
           
-          // Tableau intégré directement ici pour éviter les erreurs de variables globales indéfinies
+          // 🛠️ FIX : Le tableau est défini DIRECTEMENT ici, impossible de l'isoler
           const localTrollMessages = [
             "Tu ne vas pas mettre ce mot de passe quand même... ? 😒",
             "Allez, encore un effort... ! 💪",
@@ -498,6 +500,7 @@ entryForm.addEventListener("submit", async (e) => {
           
           const randomPhrase = localTrollMessages[Math.floor(Math.random() * localTrollMessages.length)];
           
+          // Toast persistant longue durée (10s)
           const toast = document.getElementById("toast");
           toast.innerText = `🛑 Refusé ! ${randomPhrase}`;
           toast.className = "toast-visible";
@@ -506,7 +509,7 @@ entryForm.addEventListener("submit", async (e) => {
             toast.className = "toast-hidden"; 
           }, 10000);
           
-          return; // 🛑 BLOQUÉ : On sort immédiatement de la fonction, l'envoi est avorté
+          return; // 🛑 BLOQUÉ : On quitte la fonction immédiatement, rien n'est envoyé au serveur !
         }
       }
     } catch (err) {
