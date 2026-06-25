@@ -519,7 +519,6 @@ entryForm.addEventListener("submit", async (e) => {
 "Ton niveau d'imagination est actuellement plus bas que la sécurité d'un objet connecté chinois. 📡",
 "Même une attaque par dictionnaire hors-ligne plierait l'affaire avant que j'aie le temps de cligner des yeux. ⚡"
 ];
-          ];
           
           const randomPhrase = localTrollMessages[Math.floor(Math.random() * localTrollMessages.length)];
           
