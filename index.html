@@ -58,13 +58,42 @@
         </div>
 
         <h2>Mes identifiants</h2>
-
+        <button
+          id="export-btn"
+          style="
+            background-color: #10b981;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            border: none;
+          "
+        >
+          📥 Exporter en CSV (Clair)
+        </button>
         <div class="search-bar">
           <input
             type="text"
             id="search-input"
             placeholder="Rechercher par nom de site..."
           />
+          <select
+            id="folder-filter"
+            style="
+              padding: 10px;
+              background: #1e293b;
+              border: 1px solid #334155;
+              border-radius: 6px;
+              color: white;
+              margin-left: 8px;
+              margin-top :8px;
+            "
+          >
+            <option value="">📁 Tous les dossiers</option>
+            <option value="sans-dossier">📄 Sans dossier</option>
+          </select>
         </div>
 
         <div class="table-container">
@@ -109,25 +138,75 @@
           </div>
 
           <div class="field">
-          <div class="field">
-          <label>Mot de passe</label>
-          <div class="password-container"> 
-            <input type="text" id="entry-password" /> 
-            <button type="button" id="generate-btn">Générer</button>
+            <label>Mot de passe</label>
+            <div class="password-container">
+              <input type="text" id="entry-password" />
+              <button type="button" id="generate-btn">Générer</button>
+            </div>
+
+            <div
+              style="
+                display: flex;
+                gap: 15px;
+                margin-top: 8px;
+                font-size: 0.9em;
+                color: #9ca3af;
+              "
+            >
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 5px;
+                  cursor: pointer;
+                "
+              >
+                <input type="checkbox" id="gen-numbers" checked /> Chiffres
+              </label>
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 5px;
+                  cursor: pointer;
+                "
+              >
+                <input type="checkbox" id="gen-specials" checked /> Caractères
+                spéciaux
+              </label>
+            </div>
+
+            <div id="password-strength" class="strength-bar"></div>
           </div>
-          
-          <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.9em; color: #9ca3af;">
-            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-              <input type="checkbox" id="gen-numbers" checked /> Chiffres
-            </label>
-            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-              <input type="checkbox" id="gen-specials" checked /> Caractères spéciaux
-            </label>
-          </div>
-          
-          <div id="password-strength" class="strength-bar"></div>
-        </div>
           <div style="margin-top: 15px">
+<div class="form-group" style="margin-bottom: 1rem">
+              <label
+                for="entry-folder"
+                style="
+                  display: block;
+                  color: #9ca3af;
+                  margin-bottom: 0.5rem;
+                  font-weight: 500;
+                "
+                >Dossier / Catégorie</label
+              >
+              <input
+                type="text"
+                id="entry-folder"
+                list="folder-list"
+                placeholder="Ex: Production, Perso, Sauvegardes..."
+                style="
+                  width: 100%;
+                  padding: 10px;
+                  background: #1e293b;
+                  border: 1px solid #334155;
+                  border-radius: 6px;
+                  color: white;
+                "
+              />
+              <datalist id="folder-list"></datalist>
+            </div>
+            </div>
             <button type="submit" id="submit-entry-btn">Enregistrer</button>
             <button type="button" id="reset-form-btn">Annuler</button>
           </div>
