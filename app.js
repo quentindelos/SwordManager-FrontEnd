@@ -600,62 +600,45 @@ entryForm.addEventListener("submit", async (e) => {
   // 1. VÉRIFICATION DE COMPROMISSION ROCKYOU VIA API (AU SUBMIT)
   if (inputPassword) {
     try {
-      // Calcul du hash SHA-1 local
       const hash = await sha1(inputPassword);
       const prefix = hash.slice(0, 5);
       const suffix = hash.slice(5);
 
-      // Requête K-Anonymity vers Have I Been Pwned
       const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
       if (res.ok) {
         const text = await res.text();
-        const isPwned = text
-          .split("\n")
-          .some((line) => line.startsWith(suffix));
+        const isPwned = text.split("\n").some((line) => line.startsWith(suffix));
 
-        // Blocage et affichage du toast de 10 secondes si trouvé dans RockYou
         if (isPwned) {
-          strengthBar.className = "strength-bar weak"; // Force la jauge en rouge
-
-          const randomPhrase =
-            trollMessages[Math.floor(Math.random() * trollMessages.length)];
-
-          // Toast persistant longue durée (10s)
+          strengthBar.className = "strength-bar weak"; 
+          const randomPhrase = trollMessages[Math.floor(Math.random() * trollMessages.length)];
           const toast = document.getElementById("toast");
           toast.innerText = `🛑 Refusé ! ${randomPhrase}`;
           toast.className = "toast-visible";
-
-          setTimeout(() => {
-            toast.className = "toast-hidden";
-          }, 10000);
-
-          return; // Arrête l'envoi immédiat vers le cloud
+          setTimeout(() => { toast.className = "toast-hidden"; }, 10000);
+          return; 
         }
       }
     } catch (err) {
-      console.error(
-        "Impossible de valider la blacklist (API inaccessible) :",
-        err,
-      );
+      console.error("Impossible de valider la blacklist :", err);
     }
   }
 
-  // 2. LOGIQUE DE CHIFFREMENT ET D'ENVOI SI LE MOT DE PASSE EST SÛR
+  // 2. LOGIQUE DE CHIFFREMENT ET D'ENVOI
   submitEntryBtn.disabled = true;
   const entryId = entryIdInput.value;
+  const currentFolder = entryFolderInput.value.trim() || null; // 🛠️ Stockage de la valeur propre
 
-  // 🛠️ NETTOYAGE ET AJOUT AUTOMATIQUE DU HTTPS://
   let rawUrl = entryUrlInput.value.trim();
   if (rawUrl && !/^https?:\/\//i.test(rawUrl)) {
     rawUrl = "https://" + rawUrl;
   }
 
   const entryDataClear = {
-    url: rawUrl, // Utilisation de l'URL nettoyée
+    url: rawUrl,
     username: entryUsernameInput.value.trim(),
     password: entryPasswordInput.value,
   };
-
   const label = entryNameInput.value.trim();
   if (!label) {
     submitEntryBtn.disabled = false;
@@ -663,13 +646,11 @@ entryForm.addEventListener("submit", async (e) => {
   }
 
   try {
-    const encryptedData = await encryptString(
-      JSON.stringify(entryDataClear),
-      vaultKey,
-    );
-
+    const encryptedData = await encryptString(JSON.stringify(entryDataClear), vaultKey);
     let res;
+    
     if (entryId) {
+      // MODE ÉDITION
       res = await fetch(`${API_URL}/vault/${entryId}`, {
         method: "PUT",
         headers: {
@@ -680,10 +661,11 @@ entryForm.addEventListener("submit", async (e) => {
           type: "login",
           label,
           encryptedData,
-          folder: entryFolderInput.value.trim() || null,
+          folder: currentFolder, // 🛠️ Envoi au serveur
         }),
       });
     } else {
+      // MODE CRÉATION
       res = await fetch(`${API_URL}/vault`, {
         method: "POST",
         headers: {
@@ -694,20 +676,18 @@ entryForm.addEventListener("submit", async (e) => {
           type: "login",
           label,
           encryptedData,
-          folder: entryFolderInput.value.trim() || null,
+          folder: currentFolder, // 🛠️ Envoi au serveur
         }),
       });
     }
 
     if (res.ok) {
-      await fetchVaultItems();
+      // 🛠️ MISE À JOUR STRICTE DE LA MÉMOIRE LOCALE POUR ÉVITER L'ÉCRASEMENT
+      await fetchVaultItems(); 
+      
       resetForm();
       renderEntries(searchInput.value);
-      showToast(
-        entryId
-          ? "🔄 Identifiant mis à jour !"
-          : "💾 Synchronisé avec le Cloud.",
-      );
+      showToast(entryId ? "🔄 Identifiant mis à jour !" : "💾 Synchronisé avec le Cloud.");
     } else {
       alert("Échec de synchronisation.");
     }
