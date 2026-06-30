@@ -203,7 +203,14 @@ async function handleRegister() {
       showToast("Compte créé avec succès !");
     } else {
       masterError.style.color = "#f97373";
-      masterError.textContent = data.error || "Erreur d'inscription.";
+
+      // 📑 Gestion spécifique de l'adresse email déjà utilisée
+      if (res.status === 409 || data.error === "ConflictError") {
+        masterError.textContent = "Cette adresse email est déjà utilisée.";
+      } else {
+        // Message générique pour les autres erreurs
+        masterError.textContent = data.error || "Erreur d'inscription.";
+      }
     }
   } catch (e) {
     console.error(e);
