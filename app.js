@@ -41,7 +41,6 @@ const modalCloseBtn = document.querySelector(".modal-close");
 const toggleMasterPwBtn = document.getElementById("toggle-master-pw");
 const entriesCountEl = document.getElementById("entries-count");
 
-
 // UTILS : ENCODAGE & TOAST
 function strToArrayBuffer(str) {
   return new TextEncoder().encode(str);
@@ -313,16 +312,19 @@ async function fetchVaultItems() {
     const res = await fetch(`${API_URL}/vault`, {
       headers: { Authorization: `Bearer ${userToken}` },
     });
-    
+
     if (!res.ok) throw new Error("Impossible de récupérer le coffre-fort");
-    
+
     const encryptedItems = await res.json();
     vaultEntries = []; // On réinitialise le tableau local
 
     for (let item of encryptedItems) {
       try {
         // 1. Déchiffrement du payload principal (url, username, password)
-        const decryptedPayload = await decryptString(item.encryptedData, vaultKey);
+        const decryptedPayload = await decryptString(
+          item.encryptedData,
+          vaultKey,
+        );
         const entryData = JSON.parse(decryptedPayload);
 
         // 2. Gestion sécurisée du dossier (on gère le cas où il est chiffré ou brut)
@@ -348,21 +350,26 @@ async function fetchVaultItems() {
           // On anticipe les dates pour la suite :
           createdAt: item.createdAt || null,
           updatedAt: item.updatedAt || null,
-          expiresAt: entryData.expiresAt || null // Souvent stocké dans le payload chiffré
+          expiresAt: entryData.expiresAt || null, // Souvent stocké dans le payload chiffré
         });
-
       } catch (itemError) {
         // Si UN item a un problème, on l'affiche dans la console mais on NE bloque PAS la boucle !
-        console.warn(`[Erreur Déchiffrement] Impossible de lire l'item ID ${item.id}:`, itemError.message);
+        console.warn(
+          `[Erreur Déchiffrement] Impossible de lire l'item ID ${item.id}:`,
+          itemError.message,
+        );
       }
     }
   } catch (globalError) {
-    console.error("Erreur globale lors de la récupération du coffre :", globalError);
+    console.error(
+      "Erreur globale lors de la récupération du coffre :",
+      globalError,
+    );
     showToast("❌ Erreur de synchronisation du coffre-fort.");
   }
 }
 
-// UI : AFFICHAGE AVEC CELLULES SÉCURISÉES
+// UI : AFFICHAGE AVEC CELLULES SÉCURISÉES (OPTION A - CORRIGÉE)
 function renderEntries(filter = "") {
   entriesBody.innerHTML = "";
   const lowerFilter = filter.trim().toLowerCase();
@@ -370,23 +377,25 @@ function renderEntries(filter = "") {
 
   // 1. MÀJ dynamique des options du menu déroulant (sans écraser la sélection actuelle)
   if (folderFilter) {
-    const uniqueFolders = [...new Set(vaultEntries.map(e => e.folder).filter(Boolean))];
-    
+    const uniqueFolders = [
+      ...new Set(vaultEntries.map((e) => e.folder).filter(Boolean)),
+    ];
+
     // On garde les deux options de base
     let optionsHtml = `<option value="">📁 Tous les dossiers</option>
                        <option value="sans-dossier" ${selectedFolder === "sans-dossier" ? "selected" : ""}>📄 Sans dossier</option>`;
-    
+
     // On ajoute les dossiers dynamiques
-    uniqueFolders.forEach(folder => {
+    uniqueFolders.forEach((folder) => {
       optionsHtml += `<option value="${folder}" ${selectedFolder === folder ? "selected" : ""}>📁 ${folder}</option>`;
     });
-    
+
     folderFilter.innerHTML = optionsHtml;
 
     // 🛠️ AJOUT : Alimentation dynamique des suggestions (datalist) pour le formulaire
     if (folderList) {
       let datalistHtml = "";
-      uniqueFolders.forEach(folder => {
+      uniqueFolders.forEach((folder) => {
         datalistHtml += `<option value="${folder}"></option>`;
       });
       folderList.innerHTML = datalistHtml;
@@ -396,7 +405,9 @@ function renderEntries(filter = "") {
   // 2. Filtrage croisé (Texte + Dossier)
   const filteredEntries = vaultEntries.filter((entry) => {
     // Filtre texte (Nom)
-    const matchesText = !lowerFilter ? true : (entry.name || "").toLowerCase().includes(lowerFilter);
+    const matchesText = !lowerFilter
+      ? true
+      : (entry.name || "").toLowerCase().includes(lowerFilter);
 
     // Filtre dossier
     let matchesFolder = true;
@@ -433,133 +444,139 @@ function renderEntries(filter = "") {
     return;
   }
 
-  filteredEntries
-    .forEach((entry, index) => {
-      const tr = document.createElement("tr");
+  filteredEntries.forEach((entry, index) => {
+    const tr = document.createElement("tr");
 
-      const tdName = document.createElement("td");
-      tdName.setAttribute("data-label", "Nom");
-      tdName.textContent = entry.folder ? `[${entry.folder}] ${entry.name}` : entry.name;
-      tr.appendChild(tdName);
+    const tdName = document.createElement("td");
+    tdName.setAttribute("data-label", "Nom");
+    tdName.textContent = entry.folder
+      ? `[${entry.folder}] ${entry.name}`
+      : entry.name;
+    tr.appendChild(tdName);
 
-      const tdUrl = document.createElement("td");
-      tdUrl.setAttribute("data-label", "URL");
-      if (entry.url) {
-        const a = document.createElement("a");
-        a.href = entry.url;
-        a.textContent = entry.url;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        tdUrl.appendChild(a);
-      }
-      tr.appendChild(tdUrl);
+    const tdUrl = document.createElement("td");
+    tdUrl.setAttribute("data-label", "URL");
+    if (entry.url) {
+      const a = document.createElement("a");
+      a.href = entry.url;
+      a.textContent = entry.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      tdUrl.appendChild(a);
+    }
+    tr.appendChild(tdUrl);
 
-      const tdUsername = document.createElement("td");
-      tdUsername.setAttribute("data-label", "Identifiant");
+    const tdUsername = document.createElement("td");
+    tdUsername.setAttribute("data-label", "Identifiant");
 
-      const usernameSpan = document.createElement("span");
-      usernameSpan.textContent = entry.username || "";
-      tdUsername.appendChild(usernameSpan);
+    const usernameSpan = document.createElement("span");
+    usernameSpan.textContent = entry.username || "";
+    tdUsername.appendChild(usernameSpan);
 
-      if (entry.username) {
-        const copyUserBtn = document.createElement("button");
-        copyUserBtn.className = "toggle-pw-btn";
-        copyUserBtn.textContent = "📋";
-        copyUserBtn.title = "Copier l'identifiant";
-        copyUserBtn.style.marginLeft = "8px";
+    if (entry.username) {
+      const copyUserBtn = document.createElement("button");
+      copyUserBtn.className = "toggle-pw-btn";
+      copyUserBtn.textContent = "📋";
+      copyUserBtn.title = "Copier l'identifiant";
+      copyUserBtn.style.marginLeft = "8px";
 
-        copyUserBtn.addEventListener("click", () => {
-          navigator.clipboard.writeText(entry.username).then(() => {
-            showToast("📋 Identifiant copié !");
-          });
+      copyUserBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(entry.username).then(() => {
+          showToast("📋 Identifiant copié !");
         });
-        tdUsername.appendChild(copyUserBtn);
-      }
-      tr.appendChild(tdUsername);
+      });
+      tdUsername.appendChild(copyUserBtn);
+    }
+    tr.appendChild(tdUsername);
 
-      const tdPassword = document.createElement("td");
-      tdPassword.setAttribute("data-label", "Mot de passe");
-      const pwSpan = document.createElement("span");
-      pwSpan.className = "hidden-password";
-      pwSpan.textContent = "••••••••";
+    // ==========================================================================
+    // 🔒 CELLULE DU MOT DE PASSE (MASQUAGE AUTO APRES 15 SECONDES)
+    // ==========================================================================
+    const tdPassword = document.createElement("td");
+    tdPassword.setAttribute("data-label", "Mot de passe");
 
-      const toggleBtn = document.createElement("button");
-      toggleBtn.className = "toggle-pw-btn";
-      toggleBtn.textContent = "👁️";
-      toggleBtn.addEventListener("click", () => {
-        if (pwSpan.textContent === "••••••••") {
-          pwSpan.textContent = entry.password;
-          pwSpan.className = "";
-        } else {
+    tdPassword.style.display = "flex";
+    tdPassword.style.alignItems = "center";
+    tdPassword.style.justifyContent = "space-between";
+    tdPassword.style.gap = "8px";
+
+    const pwSpan = document.createElement("span");
+    pwSpan.className = "hidden-password";
+    pwSpan.textContent = "••••••••";
+
+    pwSpan.style.flex = "1";
+    pwSpan.style.wordBreak = "break-all";
+    pwSpan.style.whiteSpace = "normal";
+
+    let hideTimeout = null; // Stocke la minuterie propre à cette ligne
+
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "toggle-pw-btn";
+    toggleBtn.textContent = "👁️";
+    toggleBtn.style.flexShrink = "0";
+
+    toggleBtn.addEventListener("click", () => {
+      if (pwSpan.textContent === "••••••••") {
+        pwSpan.textContent = entry.password;
+        pwSpan.className = "";
+        showToast("👁️ Affichage temporaire (15 secondes)");
+
+        // ⏳ Lance le compte à rebours de sécurité
+        hideTimeout = setTimeout(() => {
           pwSpan.textContent = "••••••••";
           pwSpan.className = "hidden-password";
-        }
-      });
-      tdPassword.appendChild(pwSpan);
-      tdPassword.appendChild(toggleBtn);
-      tr.appendChild(tdPassword);
+        }, 15000); // 15 secondes
 
-      const tdActions = document.createElement("td");
-      tdActions.setAttribute("data-label", "Actions");
-
-      const copyBtn = document.createElement("button");
-      copyBtn.textContent = "Copier";
-      copyBtn.className = "action-btn edit";
-      copyBtn.addEventListener("click", () => {
-        copyToClipboard(entry.password);
-      });
-
-      const editBtn = document.createElement("button");
-      editBtn.textContent = "Éditer";
-      editBtn.className = "action-btn edit";
-      editBtn.style.background = "#6366f1";
-      editBtn.addEventListener("click", () => {
-        loadEntryIntoForm(vaultEntries.indexOf(entry));
-      });
-
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "Supprimer";
-      delBtn.className = "action-btn delete";
-      delBtn.addEventListener("click", async () => {
-        if (confirm("Supprimer définitivement cet identifiant du cloud ?")) {
-          if (entry.id) {
-            await fetch(`${API_URL}/vault/${entry.id}`, {
-              method: "DELETE",
-              headers: { Authorization: `Bearer ${userToken}` },
-            });
-          }
-          vaultEntries.splice(vaultEntries.indexOf(entry), 1);
-          renderEntries(searchInput.value);
-          showToast("Supprimé.");
-        }
-      });
-
-      tdActions.appendChild(copyBtn);
-      tdActions.appendChild(editBtn);
-      tdActions.appendChild(delBtn);
-      tr.appendChild(tdActions);
-      entriesBody.appendChild(tr);
+      } else {
+        // Si l'utilisateur reclique manuellement avant la fin des 15s
+        if (hideTimeout) clearTimeout(hideTimeout);
+        pwSpan.textContent = "••••••••";
+        pwSpan.className = "hidden-password";
+      }
     });
-}
 
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => {
-    showToast("📋 Copié ! Le presse-papiers sera nettoyé dans 30 secondes.");
+    tdPassword.appendChild(pwSpan);
+    tdPassword.appendChild(toggleBtn);
+    tr.appendChild(tdPassword);
 
-    // Nettoyage automatique du presse-papiers
-    setTimeout(() => {
-      navigator.clipboard
-        .readText()
-        .then((currentText) => {
-          if (currentText === text) {
-            navigator.clipboard.writeText("");
-            showToast("🧹 Presse-papiers nettoyé par sécurité.");
-          }
-        })
-        .catch(() => {});
-    }, 30000);
+    // ==========================================================================
+    // 🛠️ ACTIONS (BOUTON COPIER SUPPRIMÉ POUR LA SÉCURITÉ)
+    // ==========================================================================
+    const tdActions = document.createElement("td");
+    tdActions.setAttribute("data-label", "Actions");
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Éditer";
+    editBtn.className = "action-btn edit";
+    editBtn.style.background = "#6366f1";
+    editBtn.addEventListener("click", () => {
+      loadEntryIntoForm(vaultEntries.indexOf(entry));
+    });
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Supprimer";
+    delBtn.className = "action-btn delete";
+    delBtn.addEventListener("click", async () => {
+      if (confirm("Supprimer définitivement cet identifiant du cloud ?")) {
+        if (entry.id) {
+          await fetch(`${API_URL}/vault/${entry.id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${userToken}` },
+          });
+        }
+        vaultEntries.splice(vaultEntries.indexOf(entry), 1);
+        renderEntries(searchInput.value);
+        showToast("Supprimé.");
+      }
+    });
+
+    tdActions.appendChild(editBtn); // Uniquement Éditer
+    tdActions.appendChild(delBtn);  // Uniquement Supprimer
+    tr.appendChild(tdActions);
+    entriesBody.appendChild(tr);
   });
 }
+
 
 function handleLogout() {
   // 1. 🛠️ NETTOYAGE : Supprime immédiatement la session du navigateur (sessionStorage)
@@ -629,8 +646,9 @@ entryForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const inputPassword = entryPasswordInput.value;
+  let pendingWarning = null; // Permet de stocker la phrase drôle temporairement
 
-  // 1. VÉRIFICATION DE COMPROMISSION ROCKYOU VIA API (AU SUBMIT)
+  // 1. VÉRIFICATION DE COMPROMISSION ROCKYOU VIA API (NON-BLOQUANT)
   if (inputPassword) {
     try {
       const hash = await sha1(inputPassword);
@@ -640,16 +658,15 @@ entryForm.addEventListener("submit", async (e) => {
       const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
       if (res.ok) {
         const text = await res.text();
-        const isPwned = text.split("\n").some((line) => line.startsWith(suffix));
+        const isPwned = text
+          .split("\n")
+          .some((line) => line.startsWith(suffix));
 
         if (isPwned) {
-          strengthBar.className = "strength-bar weak"; 
-          const randomPhrase = trollMessages[Math.floor(Math.random() * trollMessages.length)];
-          const toast = document.getElementById("toast");
-          toast.innerText = `🛑 Refusé ! ${randomPhrase}`;
-          toast.className = "toast-visible";
-          setTimeout(() => { toast.className = "toast-hidden"; }, 10000);
-          return; 
+          strengthBar.className = "strength-bar weak";
+          // On garde la phrase au chaud pour l'afficher juste après la synchronisation
+          pendingWarning =
+            trollMessages[Math.floor(Math.random() * trollMessages.length)];
         }
       }
     } catch (err) {
@@ -660,7 +677,7 @@ entryForm.addEventListener("submit", async (e) => {
   // 2. LOGIQUE DE CHIFFREMENT ET D'ENVOI
   submitEntryBtn.disabled = true;
   const entryId = entryIdInput.value;
-  const currentFolder = entryFolderInput.value.trim() || null; // 🛠️ Stockage de la valeur propre
+  const currentFolder = entryFolderInput.value.trim() || null;
 
   let rawUrl = entryUrlInput.value.trim();
   if (rawUrl && !/^https?:\/\//i.test(rawUrl)) {
@@ -670,7 +687,7 @@ entryForm.addEventListener("submit", async (e) => {
   const entryDataClear = {
     url: rawUrl,
     username: entryUsernameInput.value.trim(),
-    password: entryPasswordInput.value,
+    password: inputPassword,
   };
   const label = entryNameInput.value.trim();
   if (!label) {
@@ -679,9 +696,12 @@ entryForm.addEventListener("submit", async (e) => {
   }
 
   try {
-    const encryptedData = await encryptString(JSON.stringify(entryDataClear), vaultKey);
+    const encryptedData = await encryptString(
+      JSON.stringify(entryDataClear),
+      vaultKey,
+    );
     let res;
-    
+
     if (entryId) {
       // MODE ÉDITION
       res = await fetch(`${API_URL}/vault/${entryId}`, {
@@ -694,7 +714,7 @@ entryForm.addEventListener("submit", async (e) => {
           type: "login",
           label,
           encryptedData,
-          folder: currentFolder, // 🛠️ Envoi au serveur
+          folder: currentFolder,
         }),
       });
     } else {
@@ -709,18 +729,30 @@ entryForm.addEventListener("submit", async (e) => {
           type: "login",
           label,
           encryptedData,
-          folder: currentFolder, // 🛠️ Envoi au serveur
+          folder: currentFolder,
         }),
       });
     }
 
     if (res.ok) {
-      // 🛠️ MISE À JOUR STRICTE DE LA MÉMOIRE LOCALE POUR ÉVITER L'ÉCRASEMENT
-      await fetchVaultItems(); 
-      
+      await fetchVaultItems();
+
       resetForm();
       renderEntries(searchInput.value);
-      showToast(entryId ? "🔄 Identifiant mis à jour !" : "💾 Synchronisé avec le Cloud.");
+
+      // On affiche d'abord la réussite de l'enregistrement
+      showToast(
+        entryId
+          ? "🔄 Identifiant mis à jour !"
+          : "💾 Synchronisé avec le Cloud.",
+      );
+
+      // Si le mot de passe était compromis, on déclenche la phrase drôle 3.5 secondes après
+      if (pendingWarning) {
+        setTimeout(() => {
+          showToast(`⚠️ Attention ! ${pendingWarning}`);
+        }, 3500);
+      }
     } else {
       alert("Échec de synchronisation.");
     }
@@ -934,43 +966,53 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 // ==========================================================================
-// 📥 EXPORTATION DU COFFRE-FORT EN FORMAT CSV
+// 📥 EXPORTATION DU COFFRE-FORT EN FORMAT CSV (VERSION MODALE SÉCURISÉE)
 // ==========================================================================
 if (exportBtn) {
+  const confirmModal = document.getElementById("confirm-modal");
+  const confirmActionBtn = document.getElementById("confirm-action-btn");
+  const confirmCancelBtn = document.getElementById("confirm-cancel-btn");
+  const confirmCancelCross = document.getElementById("confirm-cancel-cross");
+
+  // Fonction pour fermer la modale de confirmation
+  const closeConfirm = () => {
+    confirmModal.classList.add("hidden");
+  };
+
   exportBtn.addEventListener("click", () => {
     if (vaultEntries.length === 0) {
       return alert("Votre coffre-fort est vide. Rien à exporter !");
     }
+    // Affiche la belle modale au lieu du confirm() Chrome
+    confirmModal.classList.remove("hidden");
+  });
 
-    if (
-      !confirm(
-        "⚠️ ATTENTION : Vous allez télécharger vos mots de passe en CLAIR dans un fichier CSV. Assurez-vous d'être seul et de supprimer le fichier après usage. Voulez-vous continuer ?",
-      )
-    ) {
-      return;
-    }
+  // Si l'utilisateur clique sur "Exporter en clair"
+  confirmActionBtn.addEventListener("click", () => {
+    closeConfirm();
 
-    // 1. Définition des en-têtes du fichier CSV
-    const headers = ["Nom", "URL", "Identifiant", "Mot de passe"];
+    // 1. Définition des en-têtes du fichier CSV (Ajout de Dossier)
+    const headers = ["Nom", "URL", "Identifiant", "Mot de passe", "Dossier"];
 
-    // 2. Transformation des entrées en lignes CSV (avec protection des guillemets)
+    // 2. Transformation des entrées en lignes CSV (Inclusion de entry.folder)
     const csvRows = [
-      headers.join(","), // Première ligne : les titres des colonnes
+      headers.join(","),
       ...vaultEntries.map((entry) => {
         return [
           `"${(entry.name || "").replace(/"/g, '""')}"`,
           `"${(entry.url || "").replace(/"/g, '""')}"`,
           `"${(entry.username || "").replace(/"/g, '""')}"`,
           `"${(entry.password || "").replace(/"/g, '""')}"`,
+          `"${(entry.folder || "Sans dossier").replace(/"/g, '""')}"`, // 📁 Ajout du dossier
         ].join(",");
       }),
     ];
 
     // 3. Création du Blob (fichier virtuel) encodé en UTF-8
-    const csvContent = "\uFEFF" + csvRows.join("\n"); // Le \uFEFF force Excel à bien lire les accents
+    const csvContent = "\uFEFF" + csvRows.join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
 
-    // 4. Déclenchement du téléchargement dans le navigateur
+    // 4. Déclenchement du téléchargement
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
 
@@ -987,10 +1029,168 @@ if (exportBtn) {
 
     showToast("📥 Coffre-fort exporté avec succès !");
   });
+
+  // Écouteurs pour annuler l'action
+  confirmCancelBtn.addEventListener("click", closeConfirm);
+  confirmCancelCross.addEventListener("click", closeConfirm);
+  confirmModal.addEventListener("click", (e) => {
+    if (e.target === confirmModal) closeConfirm();
+  });
 }
 
 if (folderFilter) {
   folderFilter.addEventListener("change", () => {
     renderEntries(searchInput.value);
+  });
+}
+
+// ==========================================================================
+// 📊 GENERATION ET ANALYSE DU RAPPORT DE SECURITE (SÉPARÉ)
+// ==========================================================================
+const reportBtn = document.getElementById("report-btn");
+const reportModal = document.getElementById("report-modal");
+const reportCloseBtn = document.getElementById("report-close-btn");
+const reportOkBtn = document.getElementById("report-ok-btn");
+const weakCountEl = document.getElementById("weak-count");
+const pwnedCountEl = document.getElementById("pwned-count");
+const reportListPwnedEl = document.getElementById("report-list-pwned");
+const reportListWeakEl = document.getElementById("report-list-weak");
+
+if (reportBtn) {
+  const closeReport = () => reportModal.classList.add("hidden");
+
+  reportBtn.addEventListener("click", async () => {
+    if (vaultEntries.length === 0) {
+      return alert("Aucune donnée à analyser. Votre coffre est vide !");
+    }
+
+    reportListPwnedEl.innerHTML =
+      "<p style='color: var(--color-text-muted);'>Analyse des fuites...</p>";
+    reportListWeakEl.innerHTML =
+      "<p style='color: var(--color-text-muted);'>Analyse de la force...</p>";
+    reportModal.classList.remove("hidden");
+
+    let weakCounter = 0;
+    let pwnedCounter = 0;
+
+    let htmlPwnedItems = "";
+    let htmlWeakItems = "";
+
+    for (const entry of vaultEntries) {
+      let isWeak = false;
+      let isPwned = false;
+      let weakReasons = [];
+
+      const pwd = entry.password || "";
+
+      // 1. Analyse locale (Robustesse)
+      if (pwd.length < 10) {
+        isWeak = true;
+        weakReasons.push("Trop court (< 10 car.)");
+      }
+      if (!/[^A-Za-z0-9]/.test(pwd) || !/\d/.test(pwd)) {
+        isWeak = true;
+        weakReasons.push("Manque de chiffres/spéciaux");
+      }
+
+      // 2. Analyse distante API (Compromission RockYou)
+      if (pwd) {
+        try {
+          const hash = await sha1(pwd);
+          const prefix = hash.slice(0, 5);
+          const suffix = hash.slice(5);
+          const res = await fetch(
+            `https://api.pwnedpasswords.com/range/${prefix}`,
+          );
+          if (res.ok) {
+            const text = await res.text();
+            isPwned = text.split("\n").some((line) => line.startsWith(suffix));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // Template générique pour un bouton de correction rapide
+      const makeRow = (reasonsColor, reasonsText) => `
+        <div style="border-bottom: 1px solid var(--color-border); padding: 8px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+          <div style="flex: 1; min-width: 0;">
+            <strong style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${entry.name}</strong>
+            <span style="color: var(--color-text-muted); font-size: 0.8rem;">${entry.username || "Sans identifiant"}</span>
+            <div style="font-size: 0.75rem; color: ${reasonsColor}; margin-top: 2px;">${reasonsText}</div>
+          </div>
+          <button class="action-btn edit" style="background: #6366f1; padding: 4px 8px; font-size: 0.72rem; flex-shrink: 0;" onclick="document.getElementById('report-modal').classList.add('hidden'); loadEntryIntoForm(${vaultEntries.indexOf(entry)});">Corriger</button>
+        </div>
+      `;
+
+      // 3. Dispatching dans les bonnes listes
+      if (isPwned) {
+        pwnedCounter++;
+        htmlPwnedItems += makeRow(
+          "#f87171",
+          "❌ Trouvé dans des fuites publiques !",
+        );
+      }
+
+      if (isWeak) {
+        weakCounter++;
+        htmlWeakItems += makeRow("#fbbf24", `⚠️ ${weakReasons.join(" • ")}`);
+      }
+    }
+
+    // Remplissage des blocs
+    weakCountEl.textContent = weakCounter;
+    pwnedCountEl.textContent = pwnedCounter;
+
+    reportListPwnedEl.innerHTML =
+      htmlPwnedItems ||
+      "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Aucun mot de passe compromis !</p>";
+    reportListWeakEl.innerHTML =
+      htmlWeakItems ||
+      "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Tous vos mots de passe sont robustes !</p>";
+  });
+
+  reportCloseBtn.addEventListener("click", closeReport);
+  reportOkBtn.addEventListener("click", closeReport);
+  reportModal.addEventListener("click", (e) => {
+    if (e.target === reportModal) closeReport();
+  });
+
+  // ==========================================================================
+  // 💡 MODALE DU GUIDE DES BONNES PRATIQUES
+  // ==========================================================================
+  const guideBtn = document.getElementById("guide-btn");
+  const guideModal = document.getElementById("guide-modal");
+  const guideCloseBtn = document.getElementById("guide-close-btn");
+  const guideOkBtn = document.getElementById("guide-ok-btn");
+
+  if (guideBtn) {
+    const closeGuide = () => guideModal.classList.add("hidden");
+
+    // Ouverture
+    guideBtn.addEventListener("click", () => {
+      guideModal.classList.remove("hidden");
+    });
+
+    // Fermetures
+    guideCloseBtn.addEventListener("click", closeGuide);
+    guideOkBtn.addEventListener("click", closeGuide);
+    guideModal.addEventListener("click", (e) => {
+      if (e.target === guideModal) closeGuide();
+    });
+  }
+
+  // ==========================================================================
+  // 🧹 NETTOYAGE DU PRESSE-PAPIERS AU RETOUR SUR L'APPLICATION
+  // ==========================================================================
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      navigator.clipboard
+        .writeText("")
+        .then(() => {
+          showToast("🧹 Presse-papiers nettoyé par mesure de sécurité.");
+        })
+        .catch(() => {});
+    }
   });
 }
