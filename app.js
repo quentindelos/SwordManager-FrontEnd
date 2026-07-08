@@ -526,7 +526,6 @@ function renderEntries(filter = "") {
           pwSpan.textContent = "••••••••";
           pwSpan.className = "hidden-password";
         }, 15000); // 15 secondes
-
       } else {
         // Si l'utilisateur reclique manuellement avant la fin des 15s
         if (hideTimeout) clearTimeout(hideTimeout);
@@ -571,12 +570,11 @@ function renderEntries(filter = "") {
     });
 
     tdActions.appendChild(editBtn); // Uniquement Éditer
-    tdActions.appendChild(delBtn);  // Uniquement Supprimer
+    tdActions.appendChild(delBtn); // Uniquement Supprimer
     tr.appendChild(tdActions);
     entriesBody.appendChild(tr);
   });
 }
-
 
 function handleLogout() {
   // 1. 🛠️ NETTOYAGE : Supprime immédiatement la session du navigateur (sessionStorage)
@@ -873,30 +871,20 @@ entryPasswordInput.addEventListener("input", (e) => {
   checkPasswordStrengthVisual(e.target.value);
 });
 
-// Écouteur lors du clic sur le bouton "Générer"
-generateBtn.addEventListener("click", () => {
-  setTimeout(() => {
-    checkPasswordStrengthVisual(entryPasswordInput.value);
-  }, 10);
-});
-
 // ==========================================================================
 // 🔄 LOGIQUE D'AFFICHAGE DU FORMULAIRE (TOGGLE)
 // ==========================================================================
 toggleFormBtn.addEventListener("click", () => {
   if (entryForm.classList.contains("hidden")) {
-    // Si la modale est cachée, on l'affiche en mode création
     entryForm.classList.remove("hidden");
     toggleFormBtn.textContent = "➕ Ajouter";
     if (entryFormTitle) entryFormTitle.textContent = "Ajouter un identifiant";
     entryNameInput.focus();
   } else {
-    // Si elle est déjà ouverte, on la referme et on réinitialise le formulaire
     resetForm();
   }
 });
 
-// Fermeture de la modale au clic sur la croix, en dehors de la carte, ou via Échap
 if (modalCloseBtn) {
   modalCloseBtn.addEventListener("click", resetForm);
 }
@@ -909,7 +897,6 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Affichage / masquage du mot de passe maître sur l'écran de connexion
 if (toggleMasterPwBtn) {
   toggleMasterPwBtn.addEventListener("click", () => {
     const isHidden = masterPasswordInput.type === "password";
@@ -921,23 +908,21 @@ if (toggleMasterPwBtn) {
     );
   });
 }
+
 // ==========================================================================
 // 🔄 RESTAURATION AUTOMATIQUE DE SESSION AU REFRESH (F5)
 // ==========================================================================
 window.addEventListener("DOMContentLoaded", async () => {
   const cachedSession = sessionStorage.getItem("sword_session");
-  if (!cachedSession) return; // Si rien en mémoire, on reste sagement sur l'écran de login
+  if (!cachedSession) return;
 
   try {
     const sessionData = JSON.parse(cachedSession);
-
-    // Vérification de la limite stricte de 1 heure
     if (Date.now() > sessionData.expiresAt) {
       sessionStorage.removeItem("sword_session");
       return;
     }
 
-    // Restauration des variables globales en mémoire volatile
     userToken = sessionData.token;
     vaultKey = await crypto.subtle.importKey(
       "raw",
@@ -947,14 +932,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       ["encrypt", "decrypt"],
     );
 
-    // Récupération immédiate et déchiffrement des lignes du coffre
     await fetchVaultItems();
-
-    // Switch d'écran visuel
     masterScreen.classList.add("hidden");
     vaultScreen.classList.remove("hidden");
 
-    // Relance des écouteurs de sécurité (Auto-lock)
     initSecurityListeners();
     resetInactivityTimer();
     renderEntries();
@@ -966,7 +947,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 // ==========================================================================
-// 📥 EXPORTATION DU COFFRE-FORT EN FORMAT CSV (VERSION MODALE SÉCURISÉE)
+// 📥 EXPORTATION DU COFFRE-FORT EN FORMAT CSV
 // ==========================================================================
 if (exportBtn) {
   const confirmModal = document.getElementById("confirm-modal");
@@ -974,7 +955,6 @@ if (exportBtn) {
   const confirmCancelBtn = document.getElementById("confirm-cancel-btn");
   const confirmCancelCross = document.getElementById("confirm-cancel-cross");
 
-  // Fonction pour fermer la modale de confirmation
   const closeConfirm = () => {
     confirmModal.classList.add("hidden");
   };
@@ -983,18 +963,12 @@ if (exportBtn) {
     if (vaultEntries.length === 0) {
       return alert("Votre coffre-fort est vide. Rien à exporter !");
     }
-    // Affiche la belle modale au lieu du confirm() Chrome
     confirmModal.classList.remove("hidden");
   });
 
-  // Si l'utilisateur clique sur "Exporter en clair"
   confirmActionBtn.addEventListener("click", () => {
     closeConfirm();
-
-    // 1. Définition des en-têtes du fichier CSV (Ajout de Dossier)
     const headers = ["Nom", "URL", "Identifiant", "Mot de passe", "Dossier"];
-
-    // 2. Transformation des entrées en lignes CSV (Inclusion de entry.folder)
     const csvRows = [
       headers.join(","),
       ...vaultEntries.map((entry) => {
@@ -1003,16 +977,13 @@ if (exportBtn) {
           `"${(entry.url || "").replace(/"/g, '""')}"`,
           `"${(entry.username || "").replace(/"/g, '""')}"`,
           `"${(entry.password || "").replace(/"/g, '""')}"`,
-          `"${(entry.folder || "Sans dossier").replace(/"/g, '""')}"`, // 📁 Ajout du dossier
+          `"${(entry.folder || "Sans dossier").replace(/"/g, '""')}"`,
         ].join(",");
       }),
     ];
 
-    // 3. Création du Blob (fichier virtuel) encodé en UTF-8
     const csvContent = "\uFEFF" + csvRows.join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-
-    // 4. Déclenchement du téléchargement
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
 
@@ -1022,15 +993,12 @@ if (exportBtn) {
       `SwordManager_Export_${new Date().toISOString().split("T")[0]}.csv`,
     );
     link.style.visibility = "hidden";
-
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     showToast("📥 Coffre-fort exporté avec succès !");
   });
 
-  // Écouteurs pour annuler l'action
   confirmCancelBtn.addEventListener("click", closeConfirm);
   confirmCancelCross.addEventListener("click", closeConfirm);
   confirmModal.addEventListener("click", (e) => {
@@ -1045,7 +1013,7 @@ if (folderFilter) {
 }
 
 // ==========================================================================
-// 📊 GENERATION ET ANALYSE DU RAPPORT DE SECURITE (SÉPARÉ)
+// 📊 GENERATION ET ANALYSE DU RAPPORT DE SECURITE
 // ==========================================================================
 const reportBtn = document.getElementById("report-btn");
 const reportModal = document.getElementById("report-modal");
@@ -1056,22 +1024,17 @@ const reportListPwnedEl = document.getElementById("report-list-pwned");
 const reportListWeakEl = document.getElementById("report-list-weak");
 
 if (reportBtn) {
-  const closeReport = () => reportModal.classList.add("hidden");
-
   reportBtn.addEventListener("click", async () => {
     if (vaultEntries.length === 0) {
       return alert("Aucune donnée à analyser. Votre coffre est vide !");
     }
 
-    reportListPwnedEl.innerHTML =
-      "<p style='color: var(--color-text-muted);'>Analyse des fuites...</p>";
-    reportListWeakEl.innerHTML =
-      "<p style='color: var(--color-text-muted);'>Analyse de la force...</p>";
+    reportListPwnedEl.innerHTML = "<p style='color: var(--color-text-muted);'>Analyse des fuites...</p>";
+    reportListWeakEl.innerHTML = "<p style='color: var(--color-text-muted);'>Analyse de la force...</p>";
     reportModal.classList.remove("hidden");
 
     let weakCounter = 0;
     let pwnedCounter = 0;
-
     let htmlPwnedItems = "";
     let htmlWeakItems = "";
 
@@ -1079,10 +1042,8 @@ if (reportBtn) {
       let isWeak = false;
       let isPwned = false;
       let weakReasons = [];
-
       const pwd = entry.password || "";
 
-      // 1. Analyse locale (Robustesse)
       if (pwd.length < 10) {
         isWeak = true;
         weakReasons.push("Trop court (< 10 car.)");
@@ -1092,15 +1053,12 @@ if (reportBtn) {
         weakReasons.push("Manque de chiffres/spéciaux");
       }
 
-      // 2. Analyse distante API (Compromission RockYou)
       if (pwd) {
         try {
           const hash = await sha1(pwd);
           const prefix = hash.slice(0, 5);
           const suffix = hash.slice(5);
-          const res = await fetch(
-            `https://api.pwnedpasswords.com/range/${prefix}`,
-          );
+          const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
           if (res.ok) {
             const text = await res.text();
             isPwned = text.split("\n").some((line) => line.startsWith(suffix));
@@ -1110,7 +1068,6 @@ if (reportBtn) {
         }
       }
 
-      // Template générique pour un bouton de correction rapide
       const makeRow = (reasonsColor, reasonsText) => `
         <div style="border-bottom: 1px solid var(--color-border); padding: 8px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
           <div style="flex: 1; min-width: 0;">
@@ -1122,59 +1079,48 @@ if (reportBtn) {
         </div>
       `;
 
-      // 3. Dispatching dans les bonnes listes
       if (isPwned) {
         pwnedCounter++;
-        htmlPwnedItems += makeRow(
-          "#f87171",
-          "❌ Trouvé dans des fuites publiques !",
-        );
+        htmlPwnedItems += makeRow("#f87171", "❌ Trouvé dans des fuites publiques !");
       }
-
       if (isWeak) {
         weakCounter++;
         htmlWeakItems += makeRow("#fbbf24", `⚠️ ${weakReasons.join(" • ")}`);
       }
     }
 
-    // Remplissage des blocs
     weakCountEl.textContent = weakCounter;
     pwnedCountEl.textContent = pwnedCounter;
-
-    reportListPwnedEl.innerHTML =
-      htmlPwnedItems ||
-      "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Aucun mot de passe compromis !</p>";
-    reportListWeakEl.innerHTML =
-      htmlWeakItems ||
-      "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Tous vos mots de passe sont robustes !</p>";
+    reportListPwnedEl.innerHTML = htmlPwnedItems || "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Aucun mot de passe compromis !</p>";
+    reportListWeakEl.innerHTML = htmlWeakItems || "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Tous vos mots de passe sont robustes !</p>";
   });
 
-  reportCloseBtn.addEventListener("click", closeReport);
-  reportOkBtn.addEventListener("click", closeReport);
-  reportModal.addEventListener("click", (e) => {
-    if (e.target === reportModal) closeReport();
-  });
-
-  // ==========================================================================
-  // 💡 MODALE DU GUIDE DES BONNES PRATIQUES
-  // ==========================================================================
-  const guideBtn = document.getElementById("guide-btn");
-  const guideModal = document.getElementById("guide-modal");
-  const guideCloseBtn = document.getElementById("guide-close-btn");
-  const guideOkBtn = document.getElementById("guide-ok-btn");
-
-  if (guideBtn) {
-    const closeGuide = () => guideModal.classList.add("hidden");
-
-    // Ouverture
-    guideBtn.addEventListener("click", () => {
-      guideModal.classList.remove("hidden");
-    });
-
-    // Fermetures
-    guideCloseBtn.addEventListener("click", closeGuide);
-    guideModal.addEventListener("click", (e) => {
-      if (e.target === guideModal) closeGuide();
-    });
+  if (reportCloseBtn) {
+    reportCloseBtn.addEventListener("click", () => reportModal.classList.add("hidden"));
   }
+  reportModal.addEventListener("click", (e) => {
+    if (e.target === reportModal) reportModal.classList.add("hidden");
+  });
+}
+
+// ==========================================================================
+// 💡 MODALE DU GUIDE DES BONNES PRATIQUES
+// ==========================================================================
+const guideBtn = document.getElementById("guide-btn");
+const guideModal = document.getElementById("guide-modal");
+const guideOkBtn = document.getElementById("guide-ok-btn"); // 🛠️ Correction ID ici pour correspondre au HTML
+
+if (guideBtn && guideModal) {
+  guideBtn.addEventListener("click", () => {
+    guideModal.classList.remove("hidden");
+  });
+
+  if (guideOkBtn) {
+    guideOkBtn.addEventListener("click", () => guideModal.classList.add("hidden"));
+  }
+  
+  // Bonus : Permet aussi de fermer en cliquant à côté de la modale guide
+  guideModal.addEventListener("click", (e) => {
+    if (e.target === guideModal) guideModal.classList.add("hidden");
+  });
 }
