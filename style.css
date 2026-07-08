@@ -977,3 +977,42 @@ button {
     }
   }
 }
+/* ==========================================================================
+   📱 ALIGNEMENT DE L'EMOJI ET FIX DES RETOURS À LA LIGNE INVOLONTAIRES
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Empêche le label "Mot de passe" de casser son dernier caractère */
+  td[data-label="Mot de passe"]::before {
+    white-space: nowrap !important;
+    padding-right: 10px; /* Ajoute un petit espace respirable après le label */
+  }
+
+  td[data-label="Identifiant"],
+  td[data-label="Mot de passe"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+  }
+
+  /* Le span ne prend que la taille de son texte */
+  td[data-label="Identifiant"] span,
+  td[data-label="Mot de passe"] span {
+    flex: 0 1 auto !important; 
+    text-align: left !important;
+    word-break: break-all !important;
+    white-space: nowrap !important; /* 🌟 Empêche le dernier point "•" de sauter à la ligne */
+  }
+
+  /* Si le mot de passe est affiché en clair (œil cliqué), on l'autorise à se couper proprement si trop long */
+  td[data-label="Mot de passe"] span:not(.hidden-password) {
+    white-space: normal !important;
+  }
+
+  td[data-label="Identifiant"] button,
+  td[data-label="Mot de passe"] button {
+    flex-shrink: 0 !important;
+    margin-left: 0 !important;
+    display: inline-block !important;
+  }
+}
