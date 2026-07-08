@@ -1150,6 +1150,7 @@ if (reportBtn) {
   });
 
   reportCloseBtn.addEventListener("click", closeReport);
+  reportOkBtn.addEventListener("click", closeReport);
   reportModal.addEventListener("click", (e) => {
     if (e.target === reportModal) closeReport();
   });
