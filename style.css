@@ -44,7 +44,11 @@ body {
       rgba(99, 102, 241, 0.12),
       transparent 45%
     ),
-    radial-gradient(circle at 85% 100%, rgba(124, 58, 237, 0.1), transparent 50%),
+    radial-gradient(
+      circle at 85% 100%,
+      rgba(124, 58, 237, 0.1),
+      transparent 50%
+    ),
     var(--color-bg);
   color: var(--color-text);
   margin: 0;
@@ -350,6 +354,31 @@ button {
   border-bottom: 1px solid var(--color-border);
 }
 
+/* ==========================================================================
+     CORRECTION RESPONSIVE DE L'EN-TÊTE (HEADER)
+     ========================================================================== */
+.vault-header {
+  flex-direction: column !important; /* Met le logo en haut, les boutons en dessous */
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 14px 16px !important;
+}
+
+.header-actions {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important; /* Permet aux boutons de passer à la ligne s'il n'y a plus de place */
+  gap: 8px !important;
+}
+
+.header-actions .btn {
+  flex: 1 !important; /* Force les boutons à avoir la même taille répartie équitablement */
+  padding: 8px 10px !important;
+  font-size: 0.8rem !important; /* Réduit légèrement le texte sur mobile */
+  text-align: center;
+}
+
 .brand-mini {
   font-weight: 700;
   font-size: 1.05rem;
@@ -448,6 +477,7 @@ button {
    ========================================================================== */
 .table-container {
   width: 100%;
+  max-height: 500px;
   overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -713,6 +743,70 @@ button {
   opacity: 1;
   transform: translateY(0);
 }
+/* ==========================================================================
+   MODALE DE CONFIRMATION PERSONNALISÉE
+   ========================================================================== */
+#confirm-modal:not(.hidden),
+#report-modal:not(.hidden),
+#guide-modal:not(.hidden) {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4, 7, 18, 0.8);
+  backdrop-filter: blur(6px);
+  z-index: 2000;
+}
+
+#confirm-modal.hidden {
+  display: none;
+}
+
+.confirm-card {
+  max-width: 420px !important;
+  border: 1px solid var(--color-danger) !important;
+  animation: modalSpawn 0.2s ease-out;
+}
+
+.confirm-body {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  margin-bottom: 14px;
+}
+
+.confirm-body strong {
+  color: var(--color-danger-hover);
+}
+
+@keyframes modalSpawn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   CORRECTION AFFICHAGE MOT DE PASSE LONG
+   ========================================================================== */
+#entries-table td:nth-child(4) {
+  max-width: 200px; /* Limite la largeur maximale de la cellule */
+  word-break: break-all; /* Force le texte long à se couper et aller à la ligne */
+  white-space: normal; /* Autorise le retour à la ligne */
+}
+
+/* Optionnel : pour que le bouton œil soit bien aligné à côté ou en dessous */
+#entries-table td:nth-child(4) .toggle-pw-btn {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+}
 
 /* ==========================================================================
    RESPONSIVE
@@ -847,5 +941,39 @@ button {
     right: 16px;
     max-width: none;
     text-align: center;
+  }
+
+  /* ==========================================================================
+   RESPONSIVE MODALE RAPPORT
+   ========================================================================== */
+  @media (max-width: 600px) {
+    /* Aligne les deux compteurs du haut l'un sous l'autre */
+    .report-overview {
+      grid-template-columns: 1fr !important;
+      gap: 10px !important;
+    }
+
+    /* Force les lignes de comptes à empiler le texte et le bouton */
+    #report-list-pwned > div,
+    #report-list-weak > div {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 8px !important;
+      padding: 12px 0 !important;
+    }
+
+    /* Permet au texte de prendre toute la largeur et de s'adapter */
+    #report-list-pwned strong,
+    #report-list-weak strong {
+      white-space: normal !important;
+    }
+
+    /* Force le bouton "Corriger" à prendre toute la largeur sur mobile */
+    #report-list-pwned .action-btn,
+    #report-list-weak .action-btn {
+      width: 100% !important;
+      text-align: center;
+      padding: 8px !important;
+    }
   }
 }
