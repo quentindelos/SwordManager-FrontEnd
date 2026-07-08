@@ -1174,23 +1174,8 @@ if (reportBtn) {
 
     // Fermetures
     guideCloseBtn.addEventListener("click", closeGuide);
-    guideOkBtn.addEventListener("click", closeGuide);
     guideModal.addEventListener("click", (e) => {
       if (e.target === guideModal) closeGuide();
     });
   }
-
-  // ==========================================================================
-  // 🧹 NETTOYAGE DU PRESSE-PAPIERS AU RETOUR SUR L'APPLICATION
-  // ==========================================================================
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      navigator.clipboard
-        .writeText("")
-        .then(() => {
-          showToast("🧹 Presse-papiers nettoyé par mesure de sécurité.");
-        })
-        .catch(() => {});
-    }
-  });
 }
