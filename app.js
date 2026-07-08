@@ -449,9 +449,26 @@ function renderEntries(filter = "") {
 
     const tdName = document.createElement("td");
     tdName.setAttribute("data-label", "Nom");
-    tdName.textContent = entry.folder
-      ? `[${entry.folder}] ${entry.name}`
-      : entry.name;
+
+    // Conteneur flex pour empiler proprement le badge et le titre
+    const nameWrapper = document.createElement("div");
+    nameWrapper.className = "name-wrapper";
+
+    // Si un dossier existe, on crée un badge stylisé
+    if (entry.folder) {
+      const folderBadge = document.createElement("span");
+      folderBadge.className = "folder-badge";
+      folderBadge.textContent = entry.folder;
+      nameWrapper.appendChild(folderBadge);
+    }
+
+    // Le titre de l'identifiant
+    const nameTitle = document.createElement("span");
+    nameTitle.className = "entry-title";
+    nameTitle.textContent = entry.name;
+    nameWrapper.appendChild(nameTitle);
+
+    tdName.appendChild(nameWrapper);
     tr.appendChild(tdName);
 
     const tdUrl = document.createElement("td");
