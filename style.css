@@ -828,6 +828,33 @@ button {
   margin-left: 6px;
 }
 
+.name-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.folder-badge {
+  display: inline-flex !important;
+  align-items: center;
+  background-color: var(--color-primary-soft) !important;
+  color: var(--color-primary-hover) !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(99, 102, 241, 0.3) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  width: fit-content !important;
+}
+
+.entry-title {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
 /* ==========================================================================
    RESPONSIVE
    ========================================================================== */
@@ -997,70 +1024,84 @@ button {
   /* Empêche le label "Mot de passe" de casser son dernier caractère */
   td[data-label="Mot de passe"]::before {
     white-space: nowrap !important;
-    padding-right: 10px; /* Ajoute un petit espace respirable après le label */
+    padding-right: 10px !important;
   }
 
+  /* Force la structure en ligne propre sur mobile */
   td[data-label="Identifiant"],
   td[data-label="Mot de passe"] {
     display: flex !important;
+    justify-content: space-between !important;
     align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 6px !important;
   }
 
-  /* Le span ne prend que la taille de son texte */
+  /* Force le span et le bouton à faire bloc à la fin de la ligne sur mobile */
+  td[data-label="Identifiant"] > :not(::before),
+  td[data-label="Mot de passe"] > :not(::before) {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important; /* Fixe l'émoji collé à 6px après le texte */
+    justify-content: flex-end !important;
+  }
+
+  /* Bloque le saut de ligne involontaire du dernier point de mot de passe */
   td[data-label="Identifiant"] span,
   td[data-label="Mot de passe"] span {
     flex: 0 1 auto !important; 
-    text-align: left !important;
-    word-break: break-all !important;
-    white-space: nowrap !important; /* 🌟 Empêche le dernier point "•" de sauter à la ligne */
+    text-align: right !important;
+    white-space: nowrap !important;
   }
 
-  /* Si le mot de passe est affiché en clair (œil cliqué), on l'autorise à se couper proprement si trop long */
+  /* Autorise le mot de passe en clair à retourner à la ligne s'il est trop long */
   td[data-label="Mot de passe"] span:not(.hidden-password) {
     white-space: normal !important;
+    word-break: break-all !important;
   }
 
   td[data-label="Identifiant"] button,
   td[data-label="Mot de passe"] button {
     flex-shrink: 0 !important;
-    margin-left: 0 !important;
+    margin: 0 !important;
     display: inline-block !important;
   }
 }
+
 /* ==========================================================================
-   🏷️ BADGES DES DOSSIERS / CATÉGORIES
+   🏷️ BADGES DES DOSSIERS / CATÉGORIES (CORRIGÉ SANS ACCOLADE EN TROP)
    ========================================================================== */
 .name-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   align-items: flex-start;
 }
 
 .folder-badge {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
-  background: var(--color-primary-soft);
-  color: var(--color-primary-hover);
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 20px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background-color: var(--color-primary-soft) !important;
+  color: var(--color-primary-hover) !important;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 9px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(99, 102, 241, 0.3) !important;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
+  width: auto !important;
 }
 
 .entry-title {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text);
+  font-size: 0.95rem;
 }
 
 @media (max-width: 768px) {
   .name-wrapper {
     align-items: flex-end;
     text-align: right;
+    width: 100%;
   }
+}
 }
