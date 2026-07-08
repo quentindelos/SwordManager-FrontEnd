@@ -19,18 +19,30 @@
             Votre coffre-fort de mots de passe, chiffré de bout en bout.
           </p>
           <ul class="brand-features">
-            <li><span class="feature-icon">🔐</span> Chiffrement AES-256 réalisé localement</li>
-            <li><span class="feature-icon">☁️</span> Synchronisation cloud sécurisée</li>
-            <li><span class="feature-icon">🕵️</span> Détection des mots de passe compromis</li>
-            <li><span class="feature-icon">🛡️</span> Verrouillage automatique après inactivité</li>
+            <li>
+              <span class="feature-icon">🔐</span> Chiffrement AES-256 réalisé
+              localement
+            </li>
+            <li>
+              <span class="feature-icon">☁️</span> Synchronisation cloud
+              sécurisée
+            </li>
+            <li>
+              <span class="feature-icon">🕵️</span> Détection des mots de passe
+              compromis
+            </li>
+            <li>
+              <span class="feature-icon">🛡️</span> Verrouillage automatique
+              après inactivité
+            </li>
           </ul>
         </div>
 
         <div class="auth-form">
           <h2>Accéder à mon coffre</h2>
           <p class="hint">
-            Entrez vos identifiants pour déverrouiller votre coffre existant,
-            ou créez-en un nouveau.
+            Entrez vos identifiants pour déverrouiller votre coffre existant, ou
+            créez-en un nouveau.
           </p>
 
           <div class="field">
@@ -94,6 +106,12 @@
           <span aria-hidden="true">🗡️</span> SwordManager
         </div>
         <div class="header-actions">
+          <button id="guide-btn" class="btn btn-ghost">
+            💡 Bonnes Pratiques
+          </button>
+          <button id="report-btn" class="btn btn-ghost">
+            📊 Rapport Sécurité
+          </button>
           <button id="export-btn" class="btn btn-ghost">📥 Exporter</button>
           <button id="lock-btn" class="btn btn-ghost">🔒 Verrouiller</button>
         </div>
@@ -118,7 +136,11 @@
             <option value="">📁 Tous les dossiers</option>
             <option value="sans-dossier">📄 Sans dossier</option>
           </select>
-          <button type="button" id="toggle-form-btn" class="btn btn-primary add-btn">
+          <button
+            type="button"
+            id="toggle-form-btn"
+            class="btn btn-primary add-btn"
+          >
             ➕ Ajouter
           </button>
         </div>
@@ -145,7 +167,9 @@
       <div class="modal-card">
         <div class="modal-header">
           <h3 id="entry-form-title">Ajouter un identifiant</h3>
-          <button type="button" class="modal-close" aria-label="Fermer">✕</button>
+          <button type="button" class="modal-close" aria-label="Fermer">
+            ✕
+          </button>
         </div>
 
         <input type="hidden" id="entry-id" />
@@ -153,7 +177,12 @@
         <div class="field-grid">
           <div class="field">
             <label for="entry-name">Nom</label>
-            <input type="text" id="entry-name" placeholder="Ex: Google" required />
+            <input
+              type="text"
+              id="entry-name"
+              placeholder="Ex: Google"
+              required
+            />
           </div>
           <div class="field">
             <label for="entry-url">Site web (URL)</label>
@@ -163,7 +192,11 @@
 
         <div class="field">
           <label for="entry-username">Identifiant / Email</label>
-          <input type="text" id="entry-username" placeholder="nom@exemple.com" />
+          <input
+            type="text"
+            id="entry-username"
+            placeholder="nom@exemple.com"
+          />
         </div>
 
         <div class="field">
@@ -209,7 +242,311 @@
         </div>
       </div>
     </form>
+    <!-- MODALE DU RAPPORT DE SÉCURITÉ -->
+    <div id="report-modal" class="hidden">
+      <div class="modal-card" style="max-width: 600px">
+        <div class="modal-header">
+          <h3>📊 Tableau de Bord de Sécurité</h3>
+          <button
+            type="button"
+            id="report-close-btn"
+            class="modal-close"
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          class="report-overview"
+          style="
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
+          "
+        >
+          <div
+            style="
+              background: var(--color-surface-alt);
+              padding: 14px;
+              border-radius: var(--radius-md);
+              text-align: center;
+              border: 1px solid var(--color-border);
+            "
+          >
+            <span style="font-size: 1.5rem">⚠️</span>
+            <h4 style="margin: 6px 0 2px 0; color: var(--color-warning)">
+              Mots de passe faibles
+            </h4>
+            <p
+              id="weak-count"
+              style="font-size: 1.4rem; font-weight: bold; margin: 0"
+            >
+              0
+            </p>
+          </div>
+          <div
+            style="
+              background: var(--color-surface-alt);
+              padding: 14px;
+              border-radius: var(--radius-md);
+              text-align: center;
+              border: 1px solid var(--color-border);
+            "
+          >
+            <span style="font-size: 1.5rem">🔥</span>
+            <h4 style="margin: 6px 0 2px 0; color: var(--color-danger)">
+              Compromis (RockYou)
+            </h4>
+            <p
+              id="pwned-count"
+              style="font-size: 1.4rem; font-weight: bold; margin: 0"
+            >
+              0
+            </p>
+          </div>
+        </div>
 
+        <!-- 🔄 DEBUT DE LA SÉPARATION EN DEUX BLOCS -->
+        <div
+          class="report-lists-container"
+          style="display: grid; grid-template-columns: 1fr; gap: 16px"
+        >
+          <!-- 🔥 BLOC DES MOTS DE PASSE COMPROMIS -->
+          <div class="field">
+            <label style="color: #ef4444; font-weight: bold; font-size: 0.85rem"
+              >🔥 Mots de passe compromis (Fuites publiques)</label
+            >
+            <div
+              id="report-list-pwned"
+              style="
+                max-height: 180px;
+                overflow-y: auto;
+                background: var(--color-surface-alt);
+                padding: 10px;
+                border-radius: var(--radius-md);
+                border: 1px solid #ef4444;
+                font-size: 0.9rem;
+                margin-top: 6px;
+              "
+            >
+              <!-- Rempli en JS -->
+            </div>
+          </div>
+
+          <!-- ⚠️ BLOC DES MOTS DE PASSE FAIBLES -->
+          <div class="field">
+            <label style="color: #f59e0b; font-weight: bold; font-size: 0.85rem"
+              >⚠️ Mots de passe faibles (Sécurité locale)</label
+            >
+            <div
+              id="report-list-weak"
+              style="
+                max-height: 180px;
+                overflow-y: auto;
+                background: var(--color-surface-alt);
+                padding: 10px;
+                border-radius: var(--radius-md);
+                border: 1px solid #f59e0b;
+                font-size: 0.9rem;
+                margin-top: 6px;
+              "
+            >
+              <!-- Rempli en JS -->
+            </div>
+          </div>
+        </div>
+        <!-- 🔄 FIN DE LA SÉPARATION -->
+
+        <div class="modal-footer">
+          <button type="button" id="report-ok-btn" class="btn btn-primary">
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- MODALE DE CONFIRMATION D'EXPORTATION SÉCURISÉE -->
+    <div id="confirm-modal" class="hidden">
+      <div class="modal-card confirm-card">
+        <div class="modal-header">
+          <h3>⚠️ Attention : Action Sensible</h3>
+          <button
+            type="button"
+            id="confirm-cancel-cross"
+            class="modal-close"
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="confirm-body">
+          <p>
+            Vous allez télécharger vos mots de passe en
+            <strong>CLAIR</strong> dans un fichier CSV.
+          </p>
+          <p class="hint">
+            Assurez-vous d'être seul devant votre écran et de supprimer
+            définitivement le fichier après usage.
+          </p>
+          <p>Voulez-vous continuer ?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="confirm-cancel-btn" class="btn btn-ghost">
+            Annuler
+          </button>
+          <button
+            type="button"
+            id="confirm-action-btn"
+            class="btn btn-primary"
+            style="background: var(--color-danger)"
+          >
+            Exporter en clair
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- MODALE DES BONNES PRATIQUES (HYGIÈNE SÉCURITÉ) -->
+    <div id="guide-modal" class="hidden">
+      <div class="modal-card" style="max-width: 550px">
+        <div class="modal-header">
+          <h3>💡 Guide d'Hygiène Informatique</h3>
+          <button
+            type="button"
+            id="guide-close-btn"
+            class="modal-close"
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          class="guide-body"
+          style="
+            font-size: 0.92rem;
+            line-height: 1.6;
+            color: var(--color-text);
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 5px;
+          "
+        >
+          <div
+            style="
+              margin-bottom: 16px;
+              border-left: 3px solid var(--color-primary);
+              padding-left: 10px;
+            "
+          >
+            <strong
+              style="
+                color: var(--color-primary-hover);
+                display: block;
+                margin-bottom: 4px;
+              "
+              >1. Unicité stricte</strong
+            >
+            <span
+              >N'utilisez jamais le même mot de passe pour deux comptes
+              différents. Si un site est corrompu, vos autres accès restent
+              protégés.</span
+            >
+          </div>
+
+          <div
+            style="
+              margin-bottom: 16px;
+              border-left: 3px solid var(--color-success);
+              padding-left: 10px;
+            "
+          >
+            <strong
+              style="
+                color: var(--color-success-hover);
+                display: block;
+                margin-bottom: 4px;
+              "
+              >2. Complexité & Longueur</strong
+            >
+            <span
+              >Privilégiez des phrases de passe ou des chaînes d'au moins 14
+              caractères combinant majuscules, minuscules, chiffres et
+              caractères spéciaux.</span
+            >
+          </div>
+
+          <div
+            style="
+              margin-bottom: 16px;
+              border-left: 3px solid var(--color-warning);
+              padding-left: 10px;
+            "
+          >
+            <strong
+              style="
+                color: var(--color-warning);
+                display: block;
+                margin-bottom: 4px;
+              "
+              >3. Double Authentification (2FA)</strong
+            >
+            <span
+              >Activez la validation en deux étapes dès que possible (via
+              application TOTP ou clé matérielle). Le mot de passe seul ne
+              suffit plus.</span
+            >
+          </div>
+
+          <div
+            style="
+              margin-bottom: 16px;
+              border-left: 3px solid var(--color-danger);
+              padding-left: 10px;
+            "
+          >
+            <strong
+              style="
+                color: var(--color-danger-hover);
+                display: block;
+                margin-bottom: 4px;
+              "
+              >4. Attention aux Exports (CSV)</strong
+            >
+            <span
+              >Lorsque vous exportez vos mots de passe en clair depuis
+              SwordManager, détruisez le fichier CSV de votre disque dès que
+              vous avez fini de l'utiliser.</span
+            >
+          </div>
+
+          <div
+            style="
+              margin-bottom: 8px;
+              border-left: 3px solid #6366f1;
+              padding-left: 10px;
+            "
+          >
+            <strong style="color: #818cf8; display: block; margin-bottom: 4px"
+              >5. Méfiez-vous du Phishing</strong
+            >
+            <span
+              >Vérifiez systématiquement l'URL des sites avant de copier-coller
+              vos identifiants. Aucun administrateur système ne vous demandera
+              votre mot de passe maître.</span
+            >
+          </div>
+        </div>
+        <div class="modal-footer" style="margin-top: 16px; padding-top: 12px">
+          <button
+            type="button"
+            id="guide-ok-btn"
+            class="btn btn-primary"
+            style="width: 100%"
+          >
+            Compris !
+          </button>
+        </div>
+      </div>
+    </div>
     <script src="app.js"></script>
   </body>
 </html>
