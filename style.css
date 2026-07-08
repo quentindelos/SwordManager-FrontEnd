@@ -1016,3 +1016,39 @@ button {
     display: inline-block !important;
   }
 }
+/* ==========================================================================
+   🏷️ BADGES DES DOSSIERS / CATÉGORIES
+   ========================================================================== */
+.name-wrapper {
+  display: flex;
+  flex-direction: column; /* Aligne le badge au-dessus du nom pour un look moderne */
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.folder-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-primary-soft); /* Fond violet/bleu transparent */
+  color: var(--color-primary-hover); /* Texte violet/bleu clair contrasté */
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px; /* Bords très arrondis style pilule */
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.entry-title {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* Ajustement pour le mode mobile (cartes empilées) */
+@media (max-width: 768px) {
+  .name-wrapper {
+    align-items: flex-end; /* Aligne le badge et le titre à droite sur mobile comme le reste */
+    text-align: right;
+  }
+}
