@@ -496,6 +496,7 @@ button {
   padding: 12px 14px;
   border-bottom: 1px solid var(--color-border);
   text-align: left;
+  vertical-align: middle !important; /* 🎯 Force toutes les cellules au même niveau horizontal */
 }
 
 #entries-table th {
@@ -521,6 +522,25 @@ button {
 
 #entries-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* 🎯 CORRECTION STRICTE DU DISPLAY FLEX INJECTÉ PAR LE JS (ÉCRAN PC) */
+@media (min-width: 769px) {
+  #entries-table td[data-label="Mot de passe"] {
+    display: table-cell !important; /* Écrase le flex du JS sur ordinateur */
+    white-space: nowrap;
+  }
+  
+  #entries-table td[data-label="Mot de passe"] span {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  #entries-table td[data-label="Mot de passe"] button {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
 }
 
 #entries-table td a {
@@ -743,6 +763,7 @@ button {
   opacity: 1;
   transform: translateY(0);
 }
+
 /* ==========================================================================
    MODALE DE CONFIRMATION PERSONNALISÉE
    ========================================================================== */
@@ -796,12 +817,11 @@ button {
    CORRECTION AFFICHAGE MOT DE PASSE LONG
    ========================================================================== */
 #entries-table td:nth-child(4) {
-  max-width: 200px; /* Limite la largeur maximale de la cellule */
-  word-break: break-all; /* Force le texte long à se couper et aller à la ligne */
-  white-space: normal; /* Autorise le retour à la ligne */
+  max-width: 200px;
+  word-break: break-all;
+  white-space: normal;
 }
 
-/* Optionnel : pour que le bouton œil soit bien aligné à côté ou en dessous */
 #entries-table td:nth-child(4) .toggle-pw-btn {
   display: inline-block;
   vertical-align: middle;
@@ -868,7 +888,6 @@ button {
     width: 100%;
   }
 
-  /* Le tableau devient une pile de "cartes" */
   .table-container {
     max-height: none;
     background: transparent;
@@ -943,17 +962,13 @@ button {
     text-align: center;
   }
 
-  /* ==========================================================================
-   RESPONSIVE MODALE RAPPORT
-   ========================================================================== */
+  /* RESPONSIVE MODALE RAPPORT */
   @media (max-width: 600px) {
-    /* Aligne les deux compteurs du haut l'un sous l'autre */
     .report-overview {
       grid-template-columns: 1fr !important;
       gap: 10px !important;
     }
 
-    /* Force les lignes de comptes à empiler le texte et le bouton */
     #report-list-pwned > div,
     #report-list-weak > div {
       flex-direction: column !important;
@@ -962,13 +977,11 @@ button {
       padding: 12px 0 !important;
     }
 
-    /* Permet au texte de prendre toute la largeur et de s'adapter */
     #report-list-pwned strong,
     #report-list-weak strong {
       white-space: normal !important;
     }
 
-    /* Force le bouton "Corriger" à prendre toute la largeur sur mobile */
     #report-list-pwned .action-btn,
     #report-list-weak .action-btn {
       width: 100% !important;
@@ -976,8 +989,8 @@ button {
       padding: 8px !important;
     }
   }
-}
-/* ==========================================================================
+
+ /* ==========================================================================
    📱 ALIGNEMENT DE L'EMOJI ET FIX DES RETOURS À LA LIGNE INVOLONTAIRES
    ========================================================================== */
 @media (max-width: 768px) {
@@ -1021,7 +1034,7 @@ button {
    ========================================================================== */
 .name-wrapper {
   display: flex;
-  flex-direction: column; /* Aligne le badge au-dessus du nom pour un look moderne */
+  flex-direction: column;
   gap: 4px;
   align-items: flex-start;
 }
@@ -1029,12 +1042,12 @@ button {
 .folder-badge {
   display: inline-flex;
   align-items: center;
-  background: var(--color-primary-soft); /* Fond violet/bleu transparent */
-  color: var(--color-primary-hover); /* Texte violet/bleu clair contrasté */
+  background: var(--color-primary-soft);
+  color: var(--color-primary-hover);
   font-size: 0.72rem;
   font-weight: 600;
   padding: 2px 8px;
-  border-radius: 20px; /* Bords très arrondis style pilule */
+  border-radius: 20px;
   border: 1px solid rgba(99, 102, 241, 0.3);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -1045,10 +1058,9 @@ button {
   color: var(--color-text);
 }
 
-/* Ajustement pour le mode mobile (cartes empilées) */
 @media (max-width: 768px) {
   .name-wrapper {
-    align-items: flex-end; /* Aligne le badge et le titre à droite sur mobile comme le reste */
+    align-items: flex-end;
     text-align: right;
   }
 }
