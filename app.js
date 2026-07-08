@@ -1050,7 +1050,6 @@ if (folderFilter) {
 const reportBtn = document.getElementById("report-btn");
 const reportModal = document.getElementById("report-modal");
 const reportCloseBtn = document.getElementById("report-close-btn");
-const reportOkBtn = document.getElementById("report-ok-btn");
 const weakCountEl = document.getElementById("weak-count");
 const pwnedCountEl = document.getElementById("pwned-count");
 const reportListPwnedEl = document.getElementById("report-list-pwned");
