@@ -36,6 +36,10 @@ const exportBtn = document.getElementById("export-btn");
 const entryFolderInput = document.getElementById("entry-folder");
 const folderFilter = document.getElementById("folder-filter");
 const folderList = document.getElementById("folder-list");
+const entryFormTitle = document.getElementById("entry-form-title");
+const modalCloseBtn = document.querySelector(".modal-close");
+const toggleMasterPwBtn = document.getElementById("toggle-master-pw");
+const entriesCountEl = document.getElementById("entries-count");
 
 
 // UTILS : ENCODAGE & TOAST
@@ -390,21 +394,46 @@ function renderEntries(filter = "") {
   }
 
   // 2. Filtrage croisé (Texte + Dossier)
-  vaultEntries
-    .filter((entry) => {
-      // Filtre texte (Nom)
-      const matchesText = !lowerFilter ? true : (entry.name || "").toLowerCase().includes(lowerFilter);
-      
-      // Filtre dossier
-      let matchesFolder = true;
-      if (selectedFolder === "sans-dossier") {
-        matchesFolder = !entry.folder;
-      } else if (selectedFolder !== "") {
-        matchesFolder = entry.folder === selectedFolder;
-      }
+  const filteredEntries = vaultEntries.filter((entry) => {
+    // Filtre texte (Nom)
+    const matchesText = !lowerFilter ? true : (entry.name || "").toLowerCase().includes(lowerFilter);
 
-      return matchesText && matchesFolder;
-    })
+    // Filtre dossier
+    let matchesFolder = true;
+    if (selectedFolder === "sans-dossier") {
+      matchesFolder = !entry.folder;
+    } else if (selectedFolder !== "") {
+      matchesFolder = entry.folder === selectedFolder;
+    }
+
+    return matchesText && matchesFolder;
+  });
+
+  // 3. Compteur d'identifiants (pour l'orientation de l'utilisateur)
+  if (entriesCountEl) {
+    const total = vaultEntries.length;
+    entriesCountEl.textContent =
+      total === 0
+        ? "Aucun identifiant enregistré"
+        : `${filteredEntries.length} / ${total} identifiant${total > 1 ? "s" : ""}`;
+  }
+
+  // 4. État vide
+  if (filteredEntries.length === 0) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 5;
+    td.className = "empty-state";
+    td.textContent =
+      vaultEntries.length === 0
+        ? "🗝️ Votre coffre est vide. Ajoutez votre premier identifiant."
+        : "🔍 Aucun identifiant ne correspond à votre recherche.";
+    tr.appendChild(td);
+    entriesBody.appendChild(tr);
+    return;
+  }
+
+  filteredEntries
     .forEach((entry, index) => {
       const tr = document.createElement("tr");
 
@@ -483,9 +512,9 @@ function renderEntries(filter = "") {
       const editBtn = document.createElement("button");
       editBtn.textContent = "Éditer";
       editBtn.className = "action-btn edit";
-      editBtn.style.background = "#2563eb";
+      editBtn.style.background = "#6366f1";
       editBtn.addEventListener("click", () => {
-        loadEntryIntoForm(index);
+        loadEntryIntoForm(vaultEntries.indexOf(entry));
       });
 
       const delBtn = document.createElement("button");
@@ -499,7 +528,7 @@ function renderEntries(filter = "") {
               headers: { Authorization: `Bearer ${userToken}` },
             });
           }
-          vaultEntries.splice(index, 1);
+          vaultEntries.splice(vaultEntries.indexOf(entry), 1);
           renderEntries(searchInput.value);
           showToast("Supprimé.");
         }
@@ -564,10 +593,10 @@ function resetForm() {
     document.getElementById("password-strength").className = "strength-bar";
   }
 
-  // 🛠️ AJOUT : Ferme automatiquement le formulaire et réinitialise le bouton
+  // Ferme automatiquement la modale et réinitialise le bouton d'ouverture
   entryForm.classList.add("hidden");
-  toggleFormBtn.textContent = "➕ Ajouter un identifiant";
-  toggleFormBtn.style.background = "#2563eb";
+  toggleFormBtn.textContent = "➕ Ajouter";
+  if (entryFormTitle) entryFormTitle.textContent = "Ajouter un identifiant";
 }
 
 function loadEntryIntoForm(index) {
@@ -583,12 +612,9 @@ function loadEntryIntoForm(index) {
   submitEntryBtn.textContent = "Mettre à jour";
   checkPasswordStrengthVisual(entry.password || "");
 
-  // 🛠️ AJOUT : Ouvre le formulaire pour l'édition et change le style du bouton
+  // Ouvre la modale en mode édition
   entryForm.classList.remove("hidden");
-  toggleFormBtn.textContent = "❌ Fermer le formulaire";
-  toggleFormBtn.style.background = "#6b7280";
-
-  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  if (entryFormTitle) entryFormTitle.textContent = "Modifier l'identifiant";
 }
 
 // ÉVÈNEMENT
@@ -827,18 +853,42 @@ generateBtn.addEventListener("click", () => {
 // ==========================================================================
 toggleFormBtn.addEventListener("click", () => {
   if (entryForm.classList.contains("hidden")) {
-    // Si le formulaire est caché, on l'affiche
+    // Si la modale est cachée, on l'affiche en mode création
     entryForm.classList.remove("hidden");
-    toggleFormBtn.textContent = "❌ Fermer le formulaire";
-    toggleFormBtn.style.background = "#6b7280"; // Passe en gris discret
-
-    // Défilement fluide vers le formulaire pour le confort visuel
-    entryForm.scrollIntoView({ behavior: "smooth" });
+    toggleFormBtn.textContent = "➕ Ajouter";
+    if (entryFormTitle) entryFormTitle.textContent = "Ajouter un identifiant";
+    entryNameInput.focus();
   } else {
-    // S'il est déjà ouvert, on appelle resetForm() qui va le nettoyer et le cacher
+    // Si elle est déjà ouverte, on la referme et on réinitialise le formulaire
     resetForm();
   }
 });
+
+// Fermeture de la modale au clic sur la croix, en dehors de la carte, ou via Échap
+if (modalCloseBtn) {
+  modalCloseBtn.addEventListener("click", resetForm);
+}
+entryForm.addEventListener("click", (e) => {
+  if (e.target === entryForm) resetForm();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !entryForm.classList.contains("hidden")) {
+    resetForm();
+  }
+});
+
+// Affichage / masquage du mot de passe maître sur l'écran de connexion
+if (toggleMasterPwBtn) {
+  toggleMasterPwBtn.addEventListener("click", () => {
+    const isHidden = masterPasswordInput.type === "password";
+    masterPasswordInput.type = isHidden ? "text" : "password";
+    toggleMasterPwBtn.textContent = isHidden ? "🙈" : "👁️";
+    toggleMasterPwBtn.setAttribute(
+      "aria-label",
+      isHidden ? "Masquer le mot de passe" : "Afficher le mot de passe",
+    );
+  });
+}
 // ==========================================================================
 // 🔄 RESTAURATION AUTOMATIQUE DE SESSION AU REFRESH (F5)
 // ==========================================================================

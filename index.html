@@ -7,93 +7,120 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="toast" class="toast-hidden"></div>
+    <div id="toast" class="toast-hidden" role="status" aria-live="polite"></div>
 
-    <div id="app">
-      <h1>🛡️ SwordManager</h1>
-
-      <div id="master-screen">
-        <h2>Déverrouiller ou Créer un coffre</h2>
-        <p>
-          Entrez vos identifiants pour accéder à votre espace Cloud chiffré.
-        </p>
-
-        <div class="field">
-          <label for="master-email">Adresse Email</label>
-          <input
-            type="email"
-            id="master-email"
-            placeholder="exemple@domaine.com"
-            aria-placeholder="test@example.com"
-          />
+    <!-- ÉCRAN DE CONNEXION / INSCRIPTION -->
+    <div id="master-screen">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="brand-logo">🗡️</div>
+          <h1>SwordManager</h1>
+          <p class="brand-tagline">
+            Votre coffre-fort de mots de passe, chiffré de bout en bout.
+          </p>
+          <ul class="brand-features">
+            <li><span class="feature-icon">🔐</span> Chiffrement AES-256 réalisé localement</li>
+            <li><span class="feature-icon">☁️</span> Synchronisation cloud sécurisée</li>
+            <li><span class="feature-icon">🕵️</span> Détection des mots de passe compromis</li>
+            <li><span class="feature-icon">🛡️</span> Verrouillage automatique après inactivité</li>
+          </ul>
         </div>
 
-        <div class="field">
-          <label for="master-password">Mot de passe maître</label>
-          <input
-            type="password"
-            id="master-password"
-            placeholder="Mot de passe maître"
-            aria-placeholder="mon_master_password"
-          />
-        </div>
+        <div class="auth-form">
+          <h2>Accéder à mon coffre</h2>
+          <p class="hint">
+            Entrez vos identifiants pour déverrouiller votre coffre existant,
+            ou créez-en un nouveau.
+          </p>
 
-        <div style="display: flex; gap: 8px; margin-top: 15px">
-          <button id="unlock-btn">Se connecter</button>
-          <button id="register-btn" style="background: #059669">
-            S'inscrire
-          </button>
-        </div>
+          <div class="field">
+            <label for="master-email">Adresse email</label>
+            <div class="input-icon">
+              <span class="icon" aria-hidden="true">✉️</span>
+              <input
+                type="email"
+                id="master-email"
+                placeholder="exemple@domaine.com"
+                autocomplete="username"
+              />
+            </div>
+          </div>
 
-        <p class="hint" style="margin-top: 15px">
-          Le coffre est stocké dans le cloud mais déchiffré localement. Votre
-          mot de passe maître ne quitte jamais votre machine.
-        </p>
-        <p id="master-error" class="error"></p>
+          <div class="field">
+            <label for="master-password">Mot de passe maître</label>
+            <div class="input-icon">
+              <span class="icon" aria-hidden="true">🔑</span>
+              <input
+                type="password"
+                id="master-password"
+                placeholder="Mot de passe maître"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                id="toggle-master-pw"
+                class="icon-btn"
+                tabindex="-1"
+                aria-label="Afficher le mot de passe"
+              >
+                👁️
+              </button>
+            </div>
+          </div>
+
+          <p id="master-error" class="error" role="alert"></p>
+
+          <div class="auth-actions">
+            <button id="unlock-btn" class="btn btn-primary btn-block">
+              Se connecter
+            </button>
+            <button id="register-btn" class="btn btn-secondary btn-block">
+              Créer un compte
+            </button>
+          </div>
+
+          <p class="hint zero-knowledge-note">
+            🔒 Le coffre est stocké dans le cloud mais déchiffré localement.
+            Votre mot de passe maître ne quitte jamais votre machine.
+          </p>
+        </div>
       </div>
+    </div>
 
-      <div id="vault-screen" class="hidden">
-        <div class="toolbar">
-          <button id="lock-btn">Verrouiller</button>
+    <!-- ÉCRAN DU COFFRE -->
+    <div id="vault-screen" class="hidden">
+      <header class="vault-header">
+        <div class="brand-mini">
+          <span aria-hidden="true">🗡️</span> SwordManager
+        </div>
+        <div class="header-actions">
+          <button id="export-btn" class="btn btn-ghost">📥 Exporter</button>
+          <button id="lock-btn" class="btn btn-ghost">🔒 Verrouiller</button>
+        </div>
+      </header>
+
+      <main class="vault-main">
+        <div class="vault-title-row">
+          <h2>Mes identifiants</h2>
+          <p id="entries-count" class="entries-count"></p>
         </div>
 
-        <h2>Mes identifiants</h2>
-        <button
-          id="export-btn"
-          style="
-            background-color: #10b981;
-            color: white;
-            padding: 10px 16px;
-            border-radius: 6px;
-            font-weight: bold;
-            margin-bottom: 1rem;
-            cursor: pointer;
-            border: none;
-          "
-        >
-          📥 Exporter en CSV (Clair)
-        </button>
-        <div class="search-bar">
-          <input
-            type="text"
-            id="search-input"
-            placeholder="Rechercher par nom de site..."
-          />
-          <select
-            id="folder-filter"
-            style="
-              padding: 10px;
-              background: #1e293b;
-              border: 1px solid #334155;
-              border-radius: 6px;
-              color: white;
-              margin-left: 8px;
-              margin-top :8px;
-            "
-          >
+        <div class="vault-toolbar">
+          <div class="search-field">
+            <span class="icon" aria-hidden="true">🔍</span>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Rechercher par nom de site..."
+            />
+          </div>
+          <select id="folder-filter" class="folder-select">
             <option value="">📁 Tous les dossiers</option>
             <option value="sans-dossier">📄 Sans dossier</option>
           </select>
+          <button type="button" id="toggle-form-btn" class="btn btn-primary add-btn">
+            ➕ Ajouter
+          </button>
         </div>
 
         <div class="table-container">
@@ -110,109 +137,78 @@
             <tbody id="entries-body"></tbody>
           </table>
         </div>
+      </main>
+    </div>
 
-        <div style="margin: 20px 0; text-align: center">
-          <button
-            type="button"
-            id="toggle-form-btn"
-            style="background: #2563eb; width: 100%; font-weight: 600"
-          >
-            ➕ Ajouter un identifiant
-          </button>
+    <!-- FORMULAIRE D'AJOUT / MODIFICATION (MODALE) -->
+    <form id="entry-form" class="hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="entry-form-title">Ajouter un identifiant</h3>
+          <button type="button" class="modal-close" aria-label="Fermer">✕</button>
         </div>
 
-        <form id="entry-form" class="hidden">
-          <h3>Ajouter / Modifier une entrée</h3>
-          <input type="hidden" id="entry-id" />
+        <input type="hidden" id="entry-id" />
+
+        <div class="field-grid">
           <div class="field">
-            <label>Nom</label>
-            <input type="text" id="entry-name" required />
+            <label for="entry-name">Nom</label>
+            <input type="text" id="entry-name" placeholder="Ex: Google" required />
           </div>
           <div class="field">
-            <label>URL</label>
+            <label for="entry-url">Site web (URL)</label>
             <input type="text" id="entry-url" placeholder="Ex: google.com" />
           </div>
-          <div class="field">
-            <label>Identifiant</label>
-            <input type="text" id="entry-username" />
+        </div>
+
+        <div class="field">
+          <label for="entry-username">Identifiant / Email</label>
+          <input type="text" id="entry-username" placeholder="nom@exemple.com" />
+        </div>
+
+        <div class="field">
+          <label for="entry-password">Mot de passe</label>
+          <div class="password-container">
+            <input type="text" id="entry-password" placeholder="Mot de passe" />
+            <button type="button" id="generate-btn" class="btn btn-secondary">
+              🎲 Générer
+            </button>
           </div>
 
-          <div class="field">
-            <label>Mot de passe</label>
-            <div class="password-container">
-              <input type="text" id="entry-password" />
-              <button type="button" id="generate-btn">Générer</button>
-            </div>
-
-            <div
-              style="
-                display: flex;
-                gap: 15px;
-                margin-top: 8px;
-                font-size: 0.9em;
-                color: #9ca3af;
-              "
-            >
-              <label
-                style="
-                  display: flex;
-                  align-items: center;
-                  gap: 5px;
-                  cursor: pointer;
-                "
-              >
-                <input type="checkbox" id="gen-numbers" checked /> Chiffres
-              </label>
-              <label
-                style="
-                  display: flex;
-                  align-items: center;
-                  gap: 5px;
-                  cursor: pointer;
-                "
-              >
-                <input type="checkbox" id="gen-specials" checked /> Caractères
-                spéciaux
-              </label>
-            </div>
-
-            <div id="password-strength" class="strength-bar"></div>
+          <div class="gen-options">
+            <label>
+              <input type="checkbox" id="gen-numbers" checked /> Chiffres
+            </label>
+            <label>
+              <input type="checkbox" id="gen-specials" checked /> Caractères
+              spéciaux
+            </label>
           </div>
-          <div style="margin-top: 15px">
-<div class="form-group" style="margin-bottom: 1rem">
-              <label
-                for="entry-folder"
-                style="
-                  display: block;
-                  color: #9ca3af;
-                  margin-bottom: 0.5rem;
-                  font-weight: 500;
-                "
-                >Dossier / Catégorie</label
-              >
-              <input
-                type="text"
-                id="entry-folder"
-                list="folder-list"
-                placeholder="Ex: Production, Perso, Sauvegardes..."
-                style="
-                  width: 100%;
-                  padding: 10px;
-                  background: #1e293b;
-                  border: 1px solid #334155;
-                  border-radius: 6px;
-                  color: white;
-                "
-              />
-              <datalist id="folder-list"></datalist>
-            </div>
-            </div>
-            <button type="submit" id="submit-entry-btn">Enregistrer</button>
-            <button type="button" id="reset-form-btn">Annuler</button>
-          </div>
-        </form>
+
+          <div id="password-strength" class="strength-bar"></div>
+        </div>
+
+        <div class="field">
+          <label for="entry-folder">Dossier / Catégorie</label>
+          <input
+            type="text"
+            id="entry-folder"
+            list="folder-list"
+            placeholder="Ex: Production, Perso, Sauvegardes..."
+          />
+          <datalist id="folder-list"></datalist>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="reset-form-btn" class="btn btn-ghost">
+            Annuler
+          </button>
+          <button type="submit" id="submit-entry-btn" class="btn btn-primary">
+            💾 Enregistrer
+          </button>
+        </div>
       </div>
-    </div>
+    </form>
 
     <script src="app.js"></script>
   </body>
