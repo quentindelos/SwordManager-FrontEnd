@@ -447,14 +447,14 @@ function renderEntries(filter = "") {
   filteredEntries.forEach((entry, index) => {
     const tr = document.createElement("tr");
 
+    // 🏷️ COLONNE NOM AVEC ACCÈS DIRECT AU DOSSIER
     const tdName = document.createElement("td");
     tdName.setAttribute("data-label", "Nom");
 
-    // Conteneur flex pour empiler proprement le badge et le titre
     const nameWrapper = document.createElement("div");
     nameWrapper.className = "name-wrapper";
 
-    // Si un dossier existe, on crée un badge stylisé
+    // On utilise directement la vraie variable de dossier de ton identifiant !
     if (entry.folder) {
       const folderBadge = document.createElement("span");
       folderBadge.className = "folder-badge";
@@ -462,10 +462,10 @@ function renderEntries(filter = "") {
       nameWrapper.appendChild(folderBadge);
     }
 
-    // Le titre de l'identifiant
+    // Le titre de l'identifiant reste intact
     const nameTitle = document.createElement("span");
     nameTitle.className = "entry-title";
-    nameTitle.textContent = entry.name;
+    nameTitle.textContent = entry.name || "";
     nameWrapper.appendChild(nameTitle);
 
     tdName.appendChild(nameWrapper);
@@ -1046,8 +1046,10 @@ if (reportBtn) {
       return alert("Aucune donnée à analyser. Votre coffre est vide !");
     }
 
-    reportListPwnedEl.innerHTML = "<p style='color: var(--color-text-muted);'>Analyse des fuites...</p>";
-    reportListWeakEl.innerHTML = "<p style='color: var(--color-text-muted);'>Analyse de la force...</p>";
+    reportListPwnedEl.innerHTML =
+      "<p style='color: var(--color-text-muted);'>Analyse des fuites...</p>";
+    reportListWeakEl.innerHTML =
+      "<p style='color: var(--color-text-muted);'>Analyse de la force...</p>";
     reportModal.classList.remove("hidden");
 
     let weakCounter = 0;
@@ -1075,7 +1077,9 @@ if (reportBtn) {
           const hash = await sha1(pwd);
           const prefix = hash.slice(0, 5);
           const suffix = hash.slice(5);
-          const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+          const res = await fetch(
+            `https://api.pwnedpasswords.com/range/${prefix}`,
+          );
           if (res.ok) {
             const text = await res.text();
             isPwned = text.split("\n").some((line) => line.startsWith(suffix));
@@ -1098,7 +1102,10 @@ if (reportBtn) {
 
       if (isPwned) {
         pwnedCounter++;
-        htmlPwnedItems += makeRow("#f87171", "❌ Trouvé dans des fuites publiques !");
+        htmlPwnedItems += makeRow(
+          "#f87171",
+          "❌ Trouvé dans des fuites publiques !",
+        );
       }
       if (isWeak) {
         weakCounter++;
@@ -1108,12 +1115,18 @@ if (reportBtn) {
 
     weakCountEl.textContent = weakCounter;
     pwnedCountEl.textContent = pwnedCounter;
-    reportListPwnedEl.innerHTML = htmlPwnedItems || "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Aucun mot de passe compromis !</p>";
-    reportListWeakEl.innerHTML = htmlWeakItems || "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Tous vos mots de passe sont robustes !</p>";
+    reportListPwnedEl.innerHTML =
+      htmlPwnedItems ||
+      "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Aucun mot de passe compromis !</p>";
+    reportListWeakEl.innerHTML =
+      htmlWeakItems ||
+      "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Tous vos mots de passe sont robustes !</p>";
   });
 
   if (reportCloseBtn) {
-    reportCloseBtn.addEventListener("click", () => reportModal.classList.add("hidden"));
+    reportCloseBtn.addEventListener("click", () =>
+      reportModal.classList.add("hidden"),
+    );
   }
   reportModal.addEventListener("click", (e) => {
     if (e.target === reportModal) reportModal.classList.add("hidden");
@@ -1133,9 +1146,11 @@ if (guideBtn && guideModal) {
   });
 
   if (guideOkBtn) {
-    guideOkBtn.addEventListener("click", () => guideModal.classList.add("hidden"));
+    guideOkBtn.addEventListener("click", () =>
+      guideModal.classList.add("hidden"),
+    );
   }
-  
+
   // Bonus : Permet aussi de fermer en cliquant à côté de la modale guide
   guideModal.addEventListener("click", (e) => {
     if (e.target === guideModal) guideModal.classList.add("hidden");
