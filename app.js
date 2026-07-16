@@ -1275,7 +1275,7 @@ if (reportBtn) {
 // ==========================================================================
 const guideBtn = document.getElementById("guide-btn");
 const guideModal = document.getElementById("guide-modal");
-const guideOkBtn = document.getElementById("guide-ok-btn"); // 🛠️ Correction ID ici pour correspondre au HTML
+const guideOkBtn = document.getElementById("guide-ok-btn"); 
 
 if (guideBtn && guideModal) {
   guideBtn.addEventListener("click", () => {
@@ -1288,11 +1288,18 @@ if (guideBtn && guideModal) {
     );
   }
 
-  // Bonus : Permet aussi de fermer en cliquant à côté de la modale guide
+  // ❌ Écouteur sur la croix de fermeture
+  const guideCloseCross = guideModal.querySelector(".modal-close");
+  if (guideCloseCross) {
+    guideCloseCross.addEventListener("click", () => {
+      guideModal.classList.add("hidden");
+    });
+  }
+
+  // Permet aussi de fermer en cliquant à côté de la modale guide
   guideModal.addEventListener("click", (e) => {
     if (e.target === guideModal) guideModal.classList.add("hidden");
   });
-
   // ==========================================================================
   // 📁 LOGIQUE DE LA MODALE DOSSIER PERSONNALISÉE
   // ==========================================================================
