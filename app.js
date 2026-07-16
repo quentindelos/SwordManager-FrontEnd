@@ -278,14 +278,17 @@ async function handleLogin() {
 
     // 2. Vérification du statut de la réponse
     if (!res.ok || !data.token) {
-      const errMessage = (data.error || "");
       masterError.style.color = "#f97373";
 
-      // 🌐 Cas de la PROD : Si l'API renvoie l'erreur d'authentification globale
-      if (errMessage === "AuthenticationError") {
-        masterError.textContent = "Aucun compte n'existe avec cet email, ou vos identifiants sont incorrects. Veuillez en créer un !";
+      // On récupère la valeur de l'erreur renvoyée par le backend (authController.js)
+      const errType = data && data.error ? data.error : "";
+
+      // Si le backend renvoie "AuthenticationError" (l'email n'existe pas ou le mdp est faux)
+      if (errType === "AuthenticationError") {
+        masterError.textContent =
+          "Aucun compte n'existe avec cet email, ou vos identifiants sont incorrects. Veuillez en créer un !";
       } else {
-        // 💻 Cas LOCAL (ou autres erreurs génériques) : On garde ton message d'origine
+        // Pour les autres erreurs (ex: ValidationError, InternalServerError ou erreur locale)
         masterError.textContent = data.error || "Identifiants erronés.";
       }
       return;
@@ -294,6 +297,14 @@ async function handleLogin() {
     // 3. Extraction des données une fois la connexion validée
     userToken = data.token;
     const rawKeyB64 = await decryptString(data.protectedKey, encryptionKey);
+
+    // 🛠️ SÉCURITÉ & PERSISTANCE : Sauvegarde temporaire pour le rafraîchissement (Max 1h)
+    const sessionData = {
+      token: userToken,
+      keyB64: rawKeyB64,
+      expiresAt: Date.now() + 15 * 60 * 1000, // Heure actuelle + 1 heure
+    };
+    sessionStorage.setItem("sword_session", JSON.stringify(sessionData));
 
     // 4. Importation de la clé en mémoire volatile
     vaultKey = await crypto.subtle.importKey(
@@ -317,7 +328,9 @@ async function handleLogin() {
     renderEntries();
     showToast("🔓 Coffre déverrouillé et synchronisé.");
   } catch (e) {
-    handleApiError(e, masterError);
+    console.error(e);
+    masterError.textContent =
+      "Identifiants invalides ou échec de déchiffrement.";
   } finally {
     unlockBtn.disabled = false;
     registerBtn.disabled = false;
