@@ -75,6 +75,32 @@ function showToast(message) {
   }, 4000);
 }
 
+// ==========================================================================
+// 🚨 GESTIONNAIRE D'ERREURS D'API INTELLIGENT (DEV VS PROD)
+// ==========================================================================
+function handleApiError(error, errorElement) {
+  console.error("[API Error]:", error);
+
+  // Si l'erreur est un échec de fetch (réseau coupé, serveur éteint, crash VM)
+  if (error instanceof TypeError && error.message.includes("fetch")) {
+    const isLocal =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
+    if (isLocal) {
+      errorElement.textContent =
+        "🔌 Impossible de joindre l'API locale. Lancez votre serveur Node.js sur le port 3000.";
+    } else {
+      errorElement.textContent =
+        "☁️ Le serveur Cloud est injoignable. L'instance est peut-être arrêtée ou en cours de maintenance.";
+    }
+  } else {
+    // Erreurs diverses (JSON corrompu, problème crypto, etc.)
+    errorElement.textContent =
+      "⚠️ Une erreur technique inattendue est survenue.";
+  }
+}
+
 // SÉCURITÉ : AUTO-LOCK (5 min d'inactivité)
 function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
@@ -216,14 +242,7 @@ async function handleRegister() {
       }
     }
   } catch (e) {
-    console.error(e);
-    // Si l'erreur est provoquée par fetch(), c'est que le serveur Node (port 3000) est déconnecté
-    if (e instanceof TypeError && e.message.includes("fetch")) {
-      masterError.textContent =
-        "Impossible de joindre le serveur Cloud. Lancez 'node index.js' sur le port 3000 !";
-    } else {
-      masterError.textContent = "Erreur crypto locale.";
-    }
+    handleApiError(e, masterError);
   } finally {
     registerBtn.disabled = false;
     unlockBtn.disabled = false;
@@ -267,14 +286,6 @@ async function handleLogin() {
     userToken = data.token;
     const rawKeyB64 = await decryptString(data.protectedKey, encryptionKey);
 
-    // 🛠️ SÉCURITÉ & PERSISTANCE : Sauvegarde temporaire pour le rafraîchissement (Max 1h)
-    const sessionData = {
-      token: userToken,
-      keyB64: rawKeyB64,
-      expiresAt: Date.now() + 15 * 60 * 1000, // Heure actuelle + 1 heure
-    };
-    sessionStorage.setItem("sword_session", JSON.stringify(sessionData));
-
     // 4. Importation de la clé en mémoire volatile
     vaultKey = await crypto.subtle.importKey(
       "raw",
@@ -297,9 +308,7 @@ async function handleLogin() {
     renderEntries();
     showToast("🔓 Coffre déverrouillé et synchronisé.");
   } catch (e) {
-    console.error(e);
-    masterError.textContent =
-      "Identifiants invalides ou échec de déchiffrement.";
+    handleApiError(e, masterError);
   } finally {
     unlockBtn.disabled = false;
     registerBtn.disabled = false;
@@ -404,6 +413,11 @@ function renderEntries(filter = "") {
 
   // 2. Filtrage croisé (Texte + Dossier)
   const filteredEntries = vaultEntries.filter((entry) => {
+    // 🛡️ MASQUER LES DOSSIERS VIDES DU TABLEAU
+    if (entry.name && entry.name.startsWith("[Dossier Vide]")) {
+      return false;
+    }
+
     // Filtre texte (Nom)
     const matchesText = !lowerFilter
       ? true
@@ -569,21 +583,78 @@ function renderEntries(filter = "") {
       loadEntryIntoForm(vaultEntries.indexOf(entry));
     });
 
+    // ==========================================================================
+    // 🛠️ ACTIONS (BOUTON SUPPRIMER PROPRE AVEC FLAGGING SÉCURISÉ)
+    // ==========================================================================
     const delBtn = document.createElement("button");
     delBtn.textContent = "Supprimer";
     delBtn.className = "action-btn delete";
-    delBtn.addEventListener("click", async () => {
-      if (confirm("Supprimer définitivement cet identifiant du cloud ?")) {
-        if (entry.id) {
-          await fetch(`${API_URL}/vault/${entry.id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${userToken}` },
-          });
-        }
-        vaultEntries.splice(vaultEntries.indexOf(entry), 1);
-        renderEntries(searchInput.value);
-        showToast("Supprimé.");
+
+    delBtn.addEventListener("click", () => {
+      const confirmModal = document.getElementById("confirm-modal");
+      const confirmActionBtn = document.getElementById("confirm-action-btn");
+      const confirmCancelBtn = document.getElementById("confirm-cancel-btn");
+      const confirmCancelCross = document.getElementById(
+        "confirm-cancel-cross",
+      );
+
+      if (!confirmModal || !confirmActionBtn) return;
+
+      // 1. 🛡️ SÉCURITÉ : On bascule la modale partagée en mode suppression
+      confirmActionBtn.dataset.mode = "delete";
+      confirmActionBtn.disabled = false;
+
+      // 2. Personnalisation visuelle
+      const confirmBody = confirmModal.querySelector(".confirm-body");
+      if (confirmBody) {
+        confirmBody.innerHTML = `Êtes-vous sûr de vouloir supprimer définitivement l'identifiant <strong>${entry.name || "cet élément"}</strong> du cloud ?`;
       }
+      confirmActionBtn.textContent = "Supprimer";
+
+      // Affichage de la modale
+      confirmModal.classList.remove("hidden");
+
+      // 3. Fonctions de fermeture propre
+      const closeDeleteModal = () => {
+        confirmModal.classList.add("hidden");
+        confirmActionBtn.onclick = null;
+        // 🔓 Nettoyage du mode pour rendre le bouton à l'exportation
+        delete confirmActionBtn.dataset.mode;
+        confirmActionBtn.textContent = "Confirmer";
+      };
+
+      if (confirmCancelBtn) confirmCancelBtn.onclick = closeDeleteModal;
+      if (confirmCancelCross) confirmCancelCross.onclick = closeDeleteModal;
+      confirmModal.onclick = (e) => {
+        if (e.target === confirmModal) closeDeleteModal();
+      };
+
+      // 4. Logique d'exécution de la suppression
+      confirmActionBtn.onclick = async (e) => {
+        e.preventDefault();
+
+        try {
+          confirmActionBtn.disabled = true;
+          confirmActionBtn.textContent = "Suppression...";
+
+          if (entry.id) {
+            await fetch(`${API_URL}/vault/${entry.id}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${userToken}` },
+            });
+          }
+
+          vaultEntries.splice(vaultEntries.indexOf(entry), 1);
+          closeDeleteModal();
+          renderEntries(searchInput.value);
+          showToast("🗑️ Supprimé.");
+        } catch (err) {
+          console.error(err);
+          alert("Erreur technique lors de la suppression.");
+        } finally {
+          confirmActionBtn.disabled = false;
+        }
+      };
     });
 
     tdActions.appendChild(editBtn); // Uniquement Éditer
@@ -779,7 +850,7 @@ entryForm.addEventListener("submit", async (e) => {
 });
 
 // ==========================================================================
-// 🎲 ÉCOUTEUR DU BOUTON GÉNÉRER (VERSION SÉCURISÉE)
+// 🎲 ÉCOUTEUR DU BOUTON GÉNÉRER (VERSION SÉCURISÉE SANS BIAIS DE MODULO)
 // ==========================================================================
 generateBtn.addEventListener("click", () => {
   entryPasswordInput.value = (() => {
@@ -791,7 +862,6 @@ generateBtn.addEventListener("click", () => {
     const chkSpecials = document.getElementById("gen-specials");
 
     // 3. On ajoute les chiffres et spéciaux si les cases sont cochées
-    // (ou par défaut si les éléments n'existent pas dans ton HTML)
     if (!chkNumbers || chkNumbers.checked) {
       allowedChars += "0123456789";
     }
@@ -799,13 +869,21 @@ generateBtn.addEventListener("click", () => {
       allowedChars += "()_-,?:§!@#$%^&*=+";
     }
 
-    // 4. Génération cryptographique robuste
+    // 4. Élimination du biais de modulo via Rejection Sampling
     let pw = "";
-    const array = new Uint8Array(16);
-    crypto.getRandomValues(array);
+    const len = allowedChars.length;
+    // On calcule la valeur maximale acceptable pour un tirage uniforme parfait
+    const maxValidValue = 256 - (256 % len);
+    const singleRandomValue = new Uint8Array(1);
 
-    for (let i = 0; i < 16; i++) {
-      pw += allowedChars[array[i] % allowedChars.length];
+    while (pw.length < 16) {
+      crypto.getRandomValues(singleRandomValue);
+      const randomValue = singleRandomValue[0];
+
+      // 🛡️ Si la valeur tombe dans la zone de biais (reste injuste), on la rejette
+      if (randomValue < maxValidValue) {
+        pw += allowedChars[randomValue % len];
+      }
     }
     return pw;
   })();
@@ -819,7 +897,6 @@ generateBtn.addEventListener("click", () => {
 
   showToast("🎲 Mot de passe personnalisé généré.");
 });
-resetFormBtn.addEventListener("click", resetForm);
 
 // ==========================================================================
 // 🛡️ ANALYSEUR DE FORCE (MÉTHODE LOCALE SANS NOTIFICATION INTEMPÈSTIVE)
@@ -927,43 +1004,6 @@ if (toggleMasterPwBtn) {
 }
 
 // ==========================================================================
-// 🔄 RESTAURATION AUTOMATIQUE DE SESSION AU REFRESH (F5)
-// ==========================================================================
-window.addEventListener("DOMContentLoaded", async () => {
-  const cachedSession = sessionStorage.getItem("sword_session");
-  if (!cachedSession) return;
-
-  try {
-    const sessionData = JSON.parse(cachedSession);
-    if (Date.now() > sessionData.expiresAt) {
-      sessionStorage.removeItem("sword_session");
-      return;
-    }
-
-    userToken = sessionData.token;
-    vaultKey = await crypto.subtle.importKey(
-      "raw",
-      base64ToBuf(sessionData.keyB64),
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"],
-    );
-
-    await fetchVaultItems();
-    masterScreen.classList.add("hidden");
-    vaultScreen.classList.remove("hidden");
-
-    initSecurityListeners();
-    resetInactivityTimer();
-    renderEntries();
-    showToast("🔄 Session restaurée automatiquement.");
-  } catch (err) {
-    console.error("Échec de la restauration de session :", err);
-    sessionStorage.removeItem("sword_session");
-  }
-});
-
-// ==========================================================================
 // 📥 EXPORTATION DU COFFRE-FORT EN FORMAT CSV
 // ==========================================================================
 if (exportBtn) {
@@ -980,10 +1020,23 @@ if (exportBtn) {
     if (vaultEntries.length === 0) {
       return alert("Votre coffre-fort est vide. Rien à exporter !");
     }
+
+    // 🔄 REINITIALISATION DES TEXTES DE LA MODALE POUR L'EXPORT
+    const confirmBody = confirmModal.querySelector(".confirm-body");
+    if (confirmBody) {
+      confirmBody.innerHTML =
+        "Êtes-vous sûr de vouloir exporter l'intégralité de vos identifiants en clair dans un fichier CSV ?";
+    }
+    confirmActionBtn.textContent = "Exporter en clair";
+
     confirmModal.classList.remove("hidden");
   });
 
   confirmActionBtn.addEventListener("click", () => {
+    // ⛔ Si la modale est affichée pour une suppression, on stoppe immédiatement l'export CSV !
+    if (confirmActionBtn.dataset.mode === "delete") {
+      return;
+    }
     closeConfirm();
     const headers = ["Nom", "URL", "Identifiant", "Mot de passe", "Dossier"];
     const csvRows = [
@@ -1046,6 +1099,7 @@ if (reportBtn) {
       return alert("Aucune donnée à analyser. Votre coffre est vide !");
     }
 
+    // 1. Initialisation des états d'attente (Les messages bruts statiques restent en innerHTML, aucun danger ici)
     reportListPwnedEl.innerHTML =
       "<p style='color: var(--color-text-muted);'>Analyse des fuites...</p>";
     reportListWeakEl.innerHTML =
@@ -1054,10 +1108,65 @@ if (reportBtn) {
 
     let weakCounter = 0;
     let pwnedCounter = 0;
-    let htmlPwnedItems = "";
-    let htmlWeakItems = "";
 
+    // Fonction interne sécurisée pour injecter une ligne sans utiliser innerHTML
+    const appendReportRow = (container, entry, reasonsColor, reasonsText) => {
+      const row = document.createElement("div");
+      row.style.borderBottom = "1px solid var(--color-border)";
+      row.style.padding = "8px 0";
+      row.style.display = "flex";
+      row.style.justifyContent = "space-between";
+      row.style.alignItems = "center";
+      row.style.gap = "10px";
+
+      const infoDiv = document.createElement("div");
+      infoDiv.style.flex = "1";
+      infoDiv.style.minWidth = "0";
+
+      const strongName = document.createElement("strong");
+      strongName.style.display = "block";
+      strongName.style.overflow = "hidden";
+      strongName.style.textOverflow = "ellipsis";
+      strongName.style.whiteSpace = "nowrap";
+      strongName.textContent = entry.name || ""; // 🛡️ Échappement XSS automatique via textContent
+
+      const spanUser = document.createElement("span");
+      spanUser.style.color = "var(--color-text-muted)";
+      spanUser.style.fontSize = "0.8rem";
+      spanUser.textContent = entry.username || "Sans identifiant"; // 🛡️ Échappement XSS automatique via textContent
+
+      const reasonsDiv = document.createElement("div");
+      reasonsDiv.style.fontSize = "0.75rem";
+      reasonsDiv.style.color = reasonsColor;
+      reasonsDiv.textContent = reasonsText;
+
+      infoDiv.appendChild(strongName);
+      infoDiv.appendChild(spanUser);
+      infoDiv.appendChild(reasonsDiv);
+
+      const fixBtn = document.createElement("button");
+      fixBtn.className = "action-btn edit";
+      fixBtn.style.background = "#6366f1";
+      fixBtn.style.padding = "4px 8px";
+      fixBtn.style.fontSize = "0.72rem";
+      fixBtn.style.flexShrink = "0";
+      fixBtn.textContent = "Corriger";
+      fixBtn.addEventListener("click", () => {
+        reportModal.classList.add("hidden");
+        loadEntryIntoForm(vaultEntries.indexOf(entry));
+      });
+
+      row.appendChild(infoDiv);
+      row.appendChild(fixBtn);
+      container.appendChild(row);
+    };
+
+    // 2. Boucle d'analyse des identifiants
     for (const entry of vaultEntries) {
+      // 🛡️ IGNORER LES DOSSIERS VIDES DANS L'ANALYSE DE SÉCURITÉ
+      if (entry.name && entry.name.startsWith("[Dossier Vide]")) {
+        continue; // Passe directement à l'élément suivant sans l'analyser
+      }
       let isWeak = false;
       let isPwned = false;
       let weakReasons = [];
@@ -1089,38 +1198,44 @@ if (reportBtn) {
         }
       }
 
-      const makeRow = (reasonsColor, reasonsText) => `
-        <div style="border-bottom: 1px solid var(--color-border); padding: 8px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-          <div style="flex: 1; min-width: 0;">
-            <strong style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${entry.name}</strong>
-            <span style="color: var(--color-text-muted); font-size: 0.8rem;">${entry.username || "Sans identifiant"}</span>
-            <div style="font-size: 0.75rem; color: ${reasonsColor}; margin-top: 2px;">${reasonsText}</div>
-          </div>
-          <button class="action-btn edit" style="background: #6366f1; padding: 4px 8px; font-size: 0.72rem; flex-shrink: 0;" onclick="document.getElementById('report-modal').classList.add('hidden'); loadEntryIntoForm(${vaultEntries.indexOf(entry)});">Corriger</button>
-        </div>
-      `;
-
+      // 3. Traitement et injection dynamique sécurisée
       if (isPwned) {
         pwnedCounter++;
-        htmlPwnedItems += makeRow(
+        // Au premier élément trouvé, on nettoie le texte d'attente "Analyse des fuites..."
+        if (pwnedCounter === 1) reportListPwnedEl.innerHTML = "";
+        appendReportRow(
+          reportListPwnedEl,
+          entry,
           "#f87171",
           "❌ Trouvé dans des fuites publiques !",
         );
       }
       if (isWeak) {
         weakCounter++;
-        htmlWeakItems += makeRow("#fbbf24", `⚠️ ${weakReasons.join(" • ")}`);
+        // Au premier élément trouvé, on nettoie le texte d'attente "Analyse de la force..."
+        if (weakCounter === 1) reportListWeakEl.innerHTML = "";
+        appendReportRow(
+          reportListWeakEl,
+          entry,
+          "#fbbf24",
+          `⚠️ ${weakReasons.join(" • ")}`,
+        );
       }
     }
 
+    // 4. Mise à jour des compteurs globaux
     weakCountEl.textContent = weakCounter;
     pwnedCountEl.textContent = pwnedCounter;
-    reportListPwnedEl.innerHTML =
-      htmlPwnedItems ||
-      "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Aucun mot de passe compromis !</p>";
-    reportListWeakEl.innerHTML =
-      htmlWeakItems ||
-      "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Tous vos mots de passe sont robustes !</p>";
+
+    // 5. Affichage des états de succès si les compteurs sont restés à 0
+    if (pwnedCounter === 0) {
+      reportListPwnedEl.innerHTML =
+        "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Aucun mot de passe compromis !</p>";
+    }
+    if (weakCounter === 0) {
+      reportListWeakEl.innerHTML =
+        "<p style='color: var(--color-success); font-size: 0.85rem; text-align: center; margin: 5px 0;'>✅ Tous vos mots de passe sont robustes !</p>";
+    }
   });
 
   if (reportCloseBtn) {
@@ -1155,4 +1270,120 @@ if (guideBtn && guideModal) {
   guideModal.addEventListener("click", (e) => {
     if (e.target === guideModal) guideModal.classList.add("hidden");
   });
+
+  // ==========================================================================
+  // 📁 LOGIQUE DE LA MODALE DOSSIER PERSONNALISÉE
+  // ==========================================================================
+  const addFolderBtn = document.getElementById("add-folder-btn");
+  const folderModal = document.getElementById("folder-modal");
+  const folderModalClose = document.getElementById("folder-modal-close");
+  const folderCancelBtn = document.getElementById("folder-cancel-btn");
+  const folderConfirmBtn = document.getElementById("folder-confirm-btn");
+  const newFolderNameInput = document.getElementById("new-folder-name");
+  const folderError = document.getElementById("folder-error");
+
+  // Ouvre la modale
+  if (addFolderBtn && folderModal) {
+    addFolderBtn.addEventListener("click", () => {
+      newFolderNameInput.value = "";
+      folderError.textContent = "";
+      folderModal.classList.remove("hidden");
+      newFolderNameInput.focus();
+    });
+  }
+
+  // Ferme la modale
+  const closeFolderModal = () => {
+    folderModal.classList.add("hidden");
+  };
+
+  if (folderModalClose)
+    folderModalClose.addEventListener("click", closeFolderModal);
+  if (folderCancelBtn)
+    folderCancelBtn.addEventListener("click", closeFolderModal);
+
+  // Ferme si on clique à l'extérieur de la carte
+  if (folderModal) {
+    folderModal.addEventListener("click", (e) => {
+      if (e.target === folderModal) closeFolderModal();
+    });
+  }
+
+  // Soumission du dossier
+  if (folderConfirmBtn) {
+    folderConfirmBtn.addEventListener("click", async () => {
+      folderError.textContent = "";
+      const folderName = newFolderNameInput.value.trim();
+
+      if (!folderName) {
+        folderError.textContent = "Le nom du dossier ne peut pas être vide.";
+        return;
+      }
+
+      // Vérification de doublon
+      const folderExists = vaultEntries.some(
+        (entry) =>
+          entry.folder &&
+          entry.folder.toLowerCase() === folderName.toLowerCase(),
+      );
+
+      if (folderExists) {
+        folderError.textContent = "Ce dossier existe déjà !";
+        return;
+      }
+
+      const emptyPayload = {
+        url: "",
+        username: "",
+        password: "",
+      };
+
+      try {
+        folderConfirmBtn.disabled = true;
+        folderConfirmBtn.textContent = "Création...";
+
+        const encryptedData = await encryptString(
+          JSON.stringify(emptyPayload),
+          vaultKey,
+        );
+
+        const res = await fetch(`${API_URL}/vault`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({
+            type: "login",
+            label: `[Dossier Vide] ${folderName}`,
+            encryptedData: encryptedData,
+            folder: folderName,
+          }),
+        });
+
+        if (res.ok) {
+          await fetchVaultItems();
+          renderEntries(searchInput.value);
+          closeFolderModal();
+          showToast(`📁 Dossier "${folderName}" créé avec succès !`);
+        } else {
+          folderError.textContent = "Échec de la sauvegarde sur le serveur.";
+        }
+      } catch (err) {
+        console.error(err);
+        folderError.textContent = "Erreur technique lors de l'enregistrement.";
+      } finally {
+        folderConfirmBtn.disabled = false;
+        folderConfirmBtn.textContent = "Créer le dossier";
+      }
+    });
+
+    // Permet de valider en appuyant sur la touche "Entrée" dans l'input
+    newFolderNameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        folderConfirmBtn.click();
+      }
+    });
+  }
 }
