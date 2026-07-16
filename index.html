@@ -143,6 +143,9 @@
           >
             ➕ Ajouter
           </button>
+          <button id="add-folder-btn" class="btn btn-secondary">
+            📁 Créer un dossier
+          </button>
         </div>
 
         <div class="table-container">
@@ -359,6 +362,41 @@
         <!-- 🔄 FIN DE LA SÉPARATION -->
       </div>
     </div>
+
+    <!-- ==========================================================================
+   📁 MODALE DE CRÉATION DE DOSSIER PERSO
+   ========================================================================== -->
+    <div id="folder-modal" class="hidden">
+      <div class="modal-card folder-card">
+        <div class="modal-header">
+          <h3>📁 Nouveau dossier</h3>
+          <button id="folder-modal-close" class="modal-close" type="button">
+            ×
+          </button>
+        </div>
+        <div class="confirm-body">
+          <div class="field">
+            <label for="new-folder-name">Nom du dossier</label>
+            <input
+              type="text"
+              id="new-folder-name"
+              placeholder="Ex: Perso, PROD, Sauv..."
+              autocomplete="off"
+            />
+            <div id="folder-error" class="error" style="margin-top: 6px"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="folder-cancel-btn" class="btn btn-ghost" type="button">
+            Annuler
+          </button>
+          <button id="folder-confirm-btn" class="btn btn-primary" type="button">
+            Créer le dossier
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODALE DE CONFIRMATION D'EXPORTATION SÉCURISÉE -->
     <div id="confirm-modal" class="hidden">
       <div class="modal-card confirm-card">
