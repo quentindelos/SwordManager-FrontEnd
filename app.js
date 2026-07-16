@@ -405,6 +405,38 @@ function renderEntries(filter = "") {
   entriesBody.innerHTML = "";
   const lowerFilter = filter.trim().toLowerCase();
   const selectedFolder = folderFilter ? folderFilter.value : "";
+  // ==========================================================================
+  // 🗑️ GESTION DYNAMIQUE DU BOUTON DE SUPPRESSION DE DOSSIER
+  // ==========================================================================
+  let deleteFolderBtn = document.getElementById("delete-folder-btn");
+
+  // Si le bouton n'existe pas encore dans ton HTML, on le crée dynamiquement à côté du filtre
+  if (!deleteFolderBtn && folderFilter) {
+    deleteFolderBtn = document.createElement("button");
+    deleteFolderBtn.id = "delete-folder-btn";
+    deleteFolderBtn.className = "action-btn delete";
+    deleteFolderBtn.style.marginLeft = "10px";
+    deleteFolderBtn.style.padding = "6px 12px";
+    deleteFolderBtn.style.fontSize = "0.85rem";
+    // On l'insère juste après le select du filtre
+    folderFilter.parentNode.insertBefore(
+      deleteFolderBtn,
+      folderFilter.nextSibling,
+    );
+  }
+
+  // On affiche le bouton UNIQUEMENT si un vrai dossier personnalisé est sélectionné
+  if (selectedFolder && selectedFolder !== "sans-dossier") {
+    deleteFolderBtn.textContent = `🗑️ Supprimer le dossier "${selectedFolder}"`;
+    deleteFolderBtn.style.display = "inline-block";
+
+    // On branche l'action de suppression (on nettoie l'ancien onclick avant)
+    deleteFolderBtn.onclick = () => {
+      handleDeleteFolder(selectedFolder);
+    };
+  } else if (deleteFolderBtn) {
+    deleteFolderBtn.style.display = "none";
+  }
 
   // 1. MÀJ dynamique des options du menu déroulant (sans écraser la sélection actuelle)
   if (folderFilter) {
@@ -705,6 +737,123 @@ function handleLogout() {
   masterError.textContent = "Session verrouillée.";
 }
 
+// ==========================================================================
+// 📁 LOGIQUE DE SUPPRESSION DE DOSSIER (VERSION MODALE SÉCURISÉE)
+// ==========================================================================
+async function handleDeleteFolder(folderName) {
+  const confirmModal = document.getElementById("confirm-modal");
+  const confirmActionBtn = document.getElementById("confirm-action-btn");
+  const confirmCancelBtn = document.getElementById("confirm-cancel-btn");
+  const confirmCancelCross = document.getElementById("confirm-cancel-cross");
+
+  if (!confirmModal || !confirmActionBtn) return;
+
+  // 1. 🛡️ SÉCURITÉ : Passage de la modale en mode suppression de dossier
+  confirmActionBtn.dataset.mode = "delete-folder";
+  confirmActionBtn.disabled = false;
+
+  // 2. Personnalisation visuelle du texte de la modale
+  const confirmBody = confirmModal.querySelector(".confirm-body");
+  if (confirmBody) {
+    confirmBody.innerHTML = `Voulez-vous vraiment supprimer le dossier <strong>${folderName}</strong> ?<br><br><span style="color: #fbbf24;">⚠️ Les mots de passe à l'intérieur ne seront pas supprimés, ils seront simplement déplacés dans "Sans dossier".</span>`;
+  }
+  confirmActionBtn.textContent = "Supprimer le dossier";
+
+  // Affichage de la modale
+  confirmModal.classList.remove("hidden");
+
+  // 3. Fonctions de fermeture propre
+  const closeFolderDeleteModal = () => {
+    confirmModal.classList.add("hidden");
+    confirmActionBtn.onclick = null;
+    // Nettoyage du mode pour rendre le bouton aux autres fonctionnalités (comme l'export)
+    delete confirmActionBtn.dataset.mode;
+    confirmActionBtn.textContent = "Confirmer";
+  };
+
+  if (confirmCancelBtn) confirmCancelBtn.onclick = closeFolderDeleteModal;
+  if (confirmCancelCross) confirmCancelCross.onclick = closeFolderDeleteModal;
+  confirmModal.onclick = (e) => {
+    if (e.target === confirmModal) closeFolderDeleteModal();
+  };
+
+  // 4. Exécution de la suppression lors du clic sur le bouton de confirmation
+  confirmActionBtn.onclick = async (e) => {
+    e.preventDefault();
+
+    try {
+      confirmActionBtn.disabled = true;
+      confirmActionBtn.textContent = "Suppression du dossier...";
+      showToast("⏳ Traitement du dossier...");
+
+      // On filtre les éléments qui appartiennent à ce dossier
+      const entriesInFolder = vaultEntries.filter(
+        (entry) => entry.folder === folderName,
+      );
+
+      // On sépare le placeholder "Dossier Vide" des vrais identifiants
+      const placeholderEntry = entriesInFolder.find(
+        (entry) => entry.name && entry.name.startsWith("[Dossier Vide]"),
+      );
+      const realEntries = entriesInFolder.filter(
+        (entry) => !entry.name || !entry.name.startsWith("[Dossier Vide]"),
+      );
+
+      // ÉTAPE 1 : Mettre à jour les vrais identifiants pour retirer le dossier (folder = null)
+      for (const entry of realEntries) {
+        const entryDataClear = {
+          url: entry.url,
+          username: entry.username,
+          password: entry.password,
+        };
+
+        const encryptedData = await encryptString(
+          JSON.stringify(entryDataClear),
+          vaultKey,
+        );
+
+        await fetch(`${API_URL}/vault/${entry.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({
+            type: "login",
+            label: entry.name,
+            encryptedData,
+            folder: null,
+          }),
+        });
+      }
+
+      // ÉTAPE 2 : Supprimer physiquement le placeholder de dossier vide
+      if (placeholderEntry && placeholderEntry.id) {
+        await fetch(`${API_URL}/vault/${placeholderEntry.id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+      }
+
+      // ÉTAPE 3 : Synchronisation et fermeture
+      await fetchVaultItems();
+
+      if (folderFilter) {
+        folderFilter.value = "";
+      }
+
+      closeFolderDeleteModal();
+      renderEntries();
+      showToast(`📁 Dossier "${folderName}" supprimé avec succès !`);
+    } catch (err) {
+      console.error("Erreur lors de la suppression du dossier :", err);
+      showToast("❌ Une erreur est survenue.");
+    } finally {
+      confirmActionBtn.disabled = false;
+    }
+  };
+}
+
 function resetForm() {
   entryIdInput.value = "";
   entryNameInput.value = "";
@@ -872,52 +1021,82 @@ entryForm.addEventListener("submit", async (e) => {
 });
 
 // ==========================================================================
-// 🎲 ÉCOUTEUR DU BOUTON GÉNÉRER (VERSION SÉCURISÉE SANS BIAIS DE MODULO)
+// 🎲 ÉCOUTEUR DU BOUTON GÉNÉRER (VERSION CRYPTO SÛRE AVEC PRÉSENCE GARANTIE)
 // ==========================================================================
 generateBtn.addEventListener("click", () => {
   entryPasswordInput.value = (() => {
-    // 1. Base de lettres indispensables
-    let allowedChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    // 1. Définition des différents pools de caractères
+    const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const numbers = "0123456789";
+    const specials = "()_-,?:§!@#$%^&*=+";
 
-    // 2. Récupération des éléments HTML avec sécurité s'ils n'existent pas encore
     const chkNumbers = document.getElementById("gen-numbers");
     const chkSpecials = document.getElementById("gen-specials");
 
-    // 3. On ajoute les chiffres et spéciaux si les cases sont cochées
-    if (!chkNumbers || chkNumbers.checked) {
-      allowedChars += "0123456789";
-    }
-    if (!chkSpecials || chkSpecials.checked) {
-      allowedChars += "()_-,?:§!@#$%^&*=+";
-    }
+    const useNumbers = !chkNumbers || chkNumbers.checked;
+    const useSpecials = !chkSpecials || chkSpecials.checked;
 
-    // 4. Élimination du biais de modulo via Rejection Sampling
-    let pw = "";
-    const len = allowedChars.length;
-    // On calcule la valeur maximale acceptable pour un tirage uniforme parfait
-    const maxValidValue = 256 - (256 % len);
-    const singleRandomValue = new Uint8Array(1);
+    // Notre pool global de secours
+    let allowedChars = alpha;
+    if (useNumbers) allowedChars += numbers;
+    if (useSpecials) allowedChars += specials;
 
-    while (pw.length < 16) {
-      crypto.getRandomValues(singleRandomValue);
-      const randomValue = singleRandomValue[0];
+    let pwArray = [];
 
-      // 🛡️ Si la valeur tombe dans la zone de biais (reste injuste), on la rejette
-      if (randomValue < maxValidValue) {
-        pw += allowedChars[randomValue % len];
+    // Fonction interne de tirage cryptographique d'un seul caractère dans un sous-ensemble
+    const getRandomCharFromSet = (charSet) => {
+      const len = charSet.length;
+      const maxValidValue = 256 - (256 % len);
+      const singleRandomValue = new Uint8Array(1);
+      
+      while (true) {
+        crypto.getRandomValues(singleRandomValue);
+        const randomValue = singleRandomValue[0];
+        if (randomValue < maxValidValue) {
+          return charSet[randomValue % len];
+        }
       }
+    };
+
+    // 2. ÉTAPE DE GARANTIE : On pioche au moins un caractère requis de chaque type coché
+    pwArray.push(getRandomCharFromSet(alpha)); // Au moins une lettre
+    if (useNumbers) {
+      pwArray.push(getRandomCharFromSet(numbers)); // Au moins un chiffre garanti !
     }
-    return pw;
+    if (useSpecials) {
+      pwArray.push(getRandomCharFromSet(specials)); // Au moins un caractère spécial garanti !
+    }
+
+    // 3. ÉTAPE DE REMPLISSAGE : On complète pour atteindre 16 caractères au total
+    while (pwArray.length < 16) {
+      pwArray.push(getRandomCharFromSet(allowedChars));
+    }
+
+    // 4. ÉTAPE DE MÉLANGE (Fisher-Yates cryptographique)
+    // Indispensable pour que le chiffre ou caractère spécial obligatoire ne soit pas toujours au début !
+    const randomBuffer = new Uint32Array(pwArray.length);
+    crypto.getRandomValues(randomBuffer);
+
+    for (let i = pwArray.length - 1; i > 0; i--) {
+      // Tirage d'un index d'échange sans biais de modulo
+      const j = randomBuffer[i] % (i + 1);
+      // Échange des éléments
+      const temp = pwArray[i];
+      pwArray[i] = pwArray[j];
+      pwArray[j] = temp;
+    }
+
+    return pwArray.join("");
   })();
 
-  // 5. Mise à jour de la jauge visuelle
+  // Mise à jour de la jauge visuelle de force
   setTimeout(() => {
     if (typeof checkPasswordStrengthVisual === "function") {
       checkPasswordStrengthVisual(entryPasswordInput.value);
     }
   }, 10);
 
-  showToast("🎲 Mot de passe personnalisé généré.");
+  showToast("🎲 Mot de passe robuste et personnalisé généré.");
 });
 
 // ==========================================================================
@@ -1001,17 +1180,28 @@ toggleFormBtn.addEventListener("click", () => {
   }
 });
 
-if (modalCloseBtn) {
-  modalCloseBtn.addEventListener("click", resetForm);
-}
-entryForm.addEventListener("click", (e) => {
-  if (e.target === entryForm) resetForm();
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !entryForm.classList.contains("hidden")) {
-    resetForm();
+// ==========================================================================
+// ❌ ÉCOUTEURS DE FERMETURE DU FORMULAIRE (ANNULER & CROIX)
+// ==========================================================================
+
+// 1. Branchement de la croix (✕) de fermeture spécifique au formulaire
+if (entryForm) {
+  const formCloseCross = entryForm.querySelector(".modal-close");
+  if (formCloseCross) {
+    formCloseCross.addEventListener("click", (e) => {
+      e.preventDefault(); // Évite tout comportement par défaut
+      resetForm();
+    });
   }
-});
+}
+
+// 2. Branchement du bouton "Annuler" (reset-form-btn)
+if (resetFormBtn) {
+  resetFormBtn.addEventListener("click", (e) => {
+    e.preventDefault(); // Évite absolument la soumission/rechargement accidentel !
+    resetForm();
+  });
+}
 
 if (toggleMasterPwBtn) {
   toggleMasterPwBtn.addEventListener("click", () => {
@@ -1055,8 +1245,11 @@ if (exportBtn) {
   });
 
   confirmActionBtn.addEventListener("click", () => {
-    // ⛔ Si la modale est affichée pour une suppression, on stoppe immédiatement l'export CSV !
-    if (confirmActionBtn.dataset.mode === "delete") {
+    // ⛔ Si la modale est utilisée pour un processus de suppression (identifiant ou dossier), on bloque l'export !
+    if (
+      confirmActionBtn.dataset.mode === "delete" ||
+      confirmActionBtn.dataset.mode === "delete-folder"
+    ) {
       return;
     }
     closeConfirm();
@@ -1275,7 +1468,7 @@ if (reportBtn) {
 // ==========================================================================
 const guideBtn = document.getElementById("guide-btn");
 const guideModal = document.getElementById("guide-modal");
-const guideOkBtn = document.getElementById("guide-ok-btn"); 
+const guideOkBtn = document.getElementById("guide-ok-btn");
 
 if (guideBtn && guideModal) {
   guideBtn.addEventListener("click", () => {
@@ -1300,6 +1493,7 @@ if (guideBtn && guideModal) {
   guideModal.addEventListener("click", (e) => {
     if (e.target === guideModal) guideModal.classList.add("hidden");
   });
+
   // ==========================================================================
   // 📁 LOGIQUE DE LA MODALE DOSSIER PERSONNALISÉE
   // ==========================================================================
