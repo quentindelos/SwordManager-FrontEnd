@@ -278,7 +278,16 @@ async function handleLogin() {
 
     // 2. Vérification du statut de la réponse
     if (!res.ok || !data.token) {
-      masterError.textContent = data.error || "Identifiants erronés.";
+      const errMessage = (data.error || "");
+      masterError.style.color = "#f97373";
+
+      // 🌐 Cas de la PROD : Si l'API renvoie l'erreur d'authentification globale
+      if (errMessage === "AuthenticationError") {
+        masterError.textContent = "Aucun compte n'existe avec cet email, ou vos identifiants sont incorrects. Veuillez en créer un !";
+      } else {
+        // 💻 Cas LOCAL (ou autres erreurs génériques) : On garde ton message d'origine
+        masterError.textContent = data.error || "Identifiants erronés.";
+      }
       return;
     }
 
