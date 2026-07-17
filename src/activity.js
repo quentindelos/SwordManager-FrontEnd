@@ -196,6 +196,27 @@ function renderActivity() {
   });
 }
 
+// Verrouille la session (best-effort côté log) et renvoie vers le coffre, qui
+// affichera directement le formulaire de connexion puisque la session est effacée.
+function lockAndRedirectToLogin() {
+  const token = getSessionToken();
+  sessionStorage.removeItem("sword_session");
+  stopSessionGuard();
+
+  if (token) {
+    fetch(`${API_URL}/activity`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action: "logout_auto" }),
+    }).catch(() => {});
+  }
+
+  window.location.href = "index.html";
+}
+
 async function loadActivity() {
   const token = getSessionToken();
   const container = document.getElementById("activity-page-list");
@@ -218,6 +239,7 @@ async function loadActivity() {
     allLogs = await res.json();
     renderFilters();
     renderActivity();
+    startSessionGuard(() => !!getSessionToken(), lockAndRedirectToLogin);
   } catch (err) {
     console.error(err);
     container.innerHTML =

@@ -6,10 +6,6 @@ const API_URL = window.location.hostname === "localhost" || window.location.host
 let vaultEntries = [];
 let userToken = null;
 let vaultKey = null;
-let lastActivityAt = null;
-let inactivityInterval = null;
-
-const INACTIVITY_LIMIT_MS = 5 * 60 * 1000;
 
 const bootScreen = document.getElementById("boot-screen");
 const masterScreen = document.getElementById("master-screen");
@@ -130,49 +126,21 @@ function handleApiError(error, errorElement) {
 }
 
 // SÉCURITÉ : AUTO-LOCK (5 min d'inactivité)
-//
-// Basé sur une horloge murale (Date.now()) vérifiée périodiquement, plutôt que sur
-// un unique setTimeout(5min) : un setTimeout long peut être fortement retardé par le
-// navigateur quand l'onglet est en arrière-plan (throttling), ce qui empêchait la
-// déconnexion de se déclencher à l'heure. Le contrôle sur "visibilitychange" permet
-// de rattraper immédiatement la vérification dès que l'onglet redevient actif.
-function markActivity() {
-  lastActivityAt = Date.now();
-}
-
-function checkInactivity() {
-  if (!userToken || !lastActivityAt) return;
-  if (Date.now() - lastActivityAt >= INACTIVITY_LIMIT_MS) {
-    handleLogout("auto");
-    showToast("🔒 Session verrouillée automatiquement pour inactivité.");
-  }
-}
-
-function handleVisibilityChange() {
-  if (document.visibilityState === "visible") {
-    checkInactivity();
-  }
-}
-
+// La détection d'inactivité elle-même est mutualisée dans session-guard.js (chargé
+// avant ce fichier) afin de garantir le même comportement sur toutes les pages de
+// l'app, y compris activity.html.
 function initSecurityListeners() {
-  lastActivityAt = Date.now();
-  window.addEventListener("mousemove", markActivity);
-  window.addEventListener("keydown", markActivity);
-  window.addEventListener("click", markActivity);
-  window.addEventListener("scroll", markActivity, true);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-  inactivityInterval = setInterval(checkInactivity, 15000);
+  startSessionGuard(
+    () => !!userToken,
+    () => {
+      handleLogout("auto");
+      showToast("🔒 Session verrouillée automatiquement pour inactivité.");
+    },
+  );
 }
 
 function destroySecurityListeners() {
-  window.removeEventListener("mousemove", markActivity);
-  window.removeEventListener("keydown", markActivity);
-  window.removeEventListener("click", markActivity);
-  window.removeEventListener("scroll", markActivity, true);
-  document.removeEventListener("visibilitychange", handleVisibilityChange);
-  clearInterval(inactivityInterval);
-  inactivityInterval = null;
-  lastActivityAt = null;
+  stopSessionGuard();
 }
 
 // CRYPTO ENGINE (600 000 Itérations PBKDF2)
