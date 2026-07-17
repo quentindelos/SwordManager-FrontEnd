@@ -335,11 +335,12 @@ async function handleLogin() {
     userToken = data.token;
     const rawKeyB64 = await decryptString(data.protectedKey, encryptionKey);
 
-    // 🛠️ SÉCURITÉ & PERSISTANCE : Sauvegarde temporaire pour le rafraîchissement (Max 1h)
+    // 🛠️ SÉCURITÉ & PERSISTANCE : Sauvegarde temporaire pour le rafraîchissement
+    // Alignée sur la durée de vie réelle du JWT ("1h", voir authController.js)
     const sessionData = {
       token: userToken,
       keyB64: rawKeyB64,
-      expiresAt: Date.now() + 15 * 60 * 1000, // Heure actuelle + 1 heure
+      expiresAt: Date.now() + 60 * 60 * 1000,
     };
     sessionStorage.setItem("sword_session", JSON.stringify(sessionData));
 
@@ -380,7 +381,11 @@ async function fetchVaultItems() {
       headers: { Authorization: `Bearer ${userToken}` },
     });
 
-    if (!res.ok) throw new Error("Impossible de récupérer le coffre-fort");
+    if (!res.ok) {
+      // Token invalide/expiré côté serveur : inutile d'insister
+      if (res.status === 401) return false;
+      throw new Error("Impossible de récupérer le coffre-fort");
+    }
 
     const encryptedItems = await res.json();
     vaultEntries = []; // On réinitialise le tableau local
@@ -427,12 +432,63 @@ async function fetchVaultItems() {
         );
       }
     }
+    return true;
   } catch (globalError) {
     console.error(
       "Erreur globale lors de la récupération du coffre :",
       globalError,
     );
     showToast("❌ Erreur de synchronisation du coffre-fort.");
+    return false;
+  }
+}
+
+// 🔄 RESTAURATION DE SESSION (évite la déconnexion au rechargement de la page / Ctrl+R)
+async function restoreSession() {
+  const raw = sessionStorage.getItem("sword_session");
+  if (!raw) return;
+
+  let session;
+  try {
+    session = JSON.parse(raw);
+  } catch {
+    sessionStorage.removeItem("sword_session");
+    return;
+  }
+
+  if (
+    !session.token ||
+    !session.keyB64 ||
+    !session.expiresAt ||
+    Date.now() > session.expiresAt
+  ) {
+    sessionStorage.removeItem("sword_session");
+    return;
+  }
+
+  try {
+    userToken = session.token;
+    vaultKey = await crypto.subtle.importKey(
+      "raw",
+      base64ToBuf(session.keyB64),
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"],
+    );
+
+    const ok = await fetchVaultItems();
+    if (!ok) throw new Error("Session invalide ou expirée côté serveur.");
+
+    masterScreen.classList.add("hidden");
+    vaultScreen.classList.remove("hidden");
+
+    initSecurityListeners();
+    renderEntries();
+  } catch (e) {
+    console.error("Restauration de session impossible :", e);
+    userToken = null;
+    vaultKey = null;
+    sessionStorage.removeItem("sword_session");
   }
 }
 
@@ -1664,3 +1720,6 @@ if (guideBtn && guideModal) {
     });
   }
 }
+
+// Tente de restaurer une session active au chargement de la page (reload, retour d'onglet...)
+restoreSession();
