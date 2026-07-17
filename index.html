@@ -104,25 +104,46 @@
     <div id="vault-screen" class="hidden">
       <header class="vault-header">
         <div class="brand-mini">
-          <span aria-hidden="true">🗡️</span> SwordManager
+          <span class="brand-mini-logo" aria-hidden="true">🗡️</span>
+          <span>SwordManager</span>
         </div>
+
         <div class="header-actions">
-          <button id="guide-btn" class="btn btn-ghost">
-            💡 Bonnes Pratiques
+          <div class="menu-dropdown">
+            <button
+              id="menu-toggle-btn"
+              class="btn btn-ghost menu-toggle-btn"
+              type="button"
+              aria-haspopup="true"
+              aria-expanded="false"
+            >
+              <span aria-hidden="true">⋯</span>
+              <span>Menu</span>
+            </button>
+            <div id="menu-dropdown-panel" class="menu-panel hidden">
+              <a id="activity-btn" href="activity.html" class="menu-item">
+                <span class="menu-item-icon" aria-hidden="true">🕓</span>
+                <span>Historique</span>
+              </a>
+              <button id="report-btn" class="menu-item" type="button">
+                <span class="menu-item-icon" aria-hidden="true">📊</span>
+                <span>Rapport Sécurité</span>
+              </button>
+              <button id="guide-btn" class="menu-item" type="button">
+                <span class="menu-item-icon" aria-hidden="true">💡</span>
+                <span>Bonnes Pratiques</span>
+              </button>
+              <button id="export-btn" class="menu-item" type="button">
+                <span class="menu-item-icon" aria-hidden="true">📥</span>
+                <span>Exporter</span>
+              </button>
+            </div>
+          </div>
+
+          <button id="lock-btn" class="btn btn-ghost lock-btn" type="button">
+            <span aria-hidden="true">🔒</span>
+            <span>Verrouiller</span>
           </button>
-          <button id="report-btn" class="btn btn-ghost">
-            📊 Rapport Sécurité
-          </button>
-          <a
-            id="activity-btn"
-            href="activity.html"
-            target="_blank"
-            class="btn btn-ghost"
-          >
-            🕓 Historique
-          </a>
-          <button id="export-btn" class="btn btn-ghost">📥 Exporter</button>
-          <button id="lock-btn" class="btn btn-ghost">🔒 Verrouiller</button>
         </div>
       </header>
 

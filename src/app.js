@@ -1001,6 +1001,49 @@ function loadEntryIntoForm(index) {
   if (entryFormTitle) entryFormTitle.textContent = "Modifier l'identifiant";
 }
 
+// ==========================================================================
+// 📎 MENU DÉROULANT DE L'EN-TÊTE
+// ==========================================================================
+const menuToggleBtn = document.getElementById("menu-toggle-btn");
+const menuDropdownPanel = document.getElementById("menu-dropdown-panel");
+
+function closeHeaderMenu() {
+  if (!menuDropdownPanel) return;
+  menuDropdownPanel.classList.add("hidden");
+  menuToggleBtn.setAttribute("aria-expanded", "false");
+}
+
+function toggleHeaderMenu() {
+  if (!menuDropdownPanel) return;
+  const isOpen = !menuDropdownPanel.classList.contains("hidden");
+  if (isOpen) {
+    closeHeaderMenu();
+  } else {
+    menuDropdownPanel.classList.remove("hidden");
+    menuToggleBtn.setAttribute("aria-expanded", "true");
+  }
+}
+
+if (menuToggleBtn && menuDropdownPanel) {
+  menuToggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleHeaderMenu();
+  });
+
+  // Ferme le menu après avoir choisi une action, ou en cliquant ailleurs / Échap
+  menuDropdownPanel.addEventListener("click", (e) => {
+    if (e.target.closest(".menu-item")) closeHeaderMenu();
+  });
+  document.addEventListener("click", (e) => {
+    if (!menuDropdownPanel.classList.contains("hidden") && !e.target.closest(".menu-dropdown")) {
+      closeHeaderMenu();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeHeaderMenu();
+  });
+}
+
 // ÉVÈNEMENT
 unlockBtn.addEventListener("click", handleLogin);
 registerBtn.addEventListener("click", handleRegister);
