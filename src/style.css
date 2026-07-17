@@ -457,11 +457,9 @@ button {
     padding: 12px 16px;
   }
 
-  .lock-btn span:last-child {
-    display: none; /* Ne garde que l'icône sur très petit écran */
-  }
-
-  .menu-toggle-btn span:last-child {
+  /* Ne garde que l'icône sur très petit écran, pour tous les boutons du header
+     (Verrouiller, Menu, Retour au coffre...) et éviter tout débordement horizontal */
+  .header-actions .btn span:last-child {
     display: none;
   }
 }
@@ -1088,13 +1086,9 @@ button {
     text-align: center;
   }
 
-  /* RESPONSIVE MODALE RAPPORT */
+  /* RESPONSIVE MODALE RAPPORT (le donut/score/tuiles ont leur propre media query
+     dédiée plus bas ; ceci ne concerne que le contenu des listes) */
   @media (max-width: 600px) {
-    .report-overview {
-      grid-template-columns: 1fr !important;
-      gap: 10px !important;
-    }
-
     #report-list-pwned > div,
     #report-list-weak > div {
       flex-direction: column !important;

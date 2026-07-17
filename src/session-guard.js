@@ -11,15 +11,29 @@ let sessionGuardInterval = null;
 let sessionGuardIsActive = null;
 let sessionGuardOnInactive = null;
 
-function sessionGuardMarkActivity() {
+function sessionGuardMarkActivity(e) {
   sessionGuardLastActivityAt = Date.now();
+  // Diagnostic optionnel : dans la console, exécuter `SESSION_GUARD_DEBUG = true`
+  // avant de laisser la page inactive pour voir en direct ce qui relance le minuteur.
+  if (window.SESSION_GUARD_DEBUG) {
+    console.debug(
+      `[session-guard] activité détectée (${e?.type || "inconnu"})`,
+      e?.target,
+    );
+  }
 }
 
 function sessionGuardCheck() {
   if (!sessionGuardIsActive || !sessionGuardIsActive() || !sessionGuardLastActivityAt) {
     return;
   }
-  if (Date.now() - sessionGuardLastActivityAt >= SESSION_GUARD_LIMIT_MS) {
+  const elapsedMs = Date.now() - sessionGuardLastActivityAt;
+  if (window.SESSION_GUARD_DEBUG) {
+    console.debug(
+      `[session-guard] vérification : ${Math.round(elapsedMs / 1000)}s d'inactivité (limite ${SESSION_GUARD_LIMIT_MS / 1000}s)`,
+    );
+  }
+  if (elapsedMs >= SESSION_GUARD_LIMIT_MS) {
     sessionGuardOnInactive();
   }
 }
