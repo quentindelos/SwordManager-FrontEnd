@@ -769,7 +769,8 @@ button {
    ========================================================================== */
 #confirm-modal:not(.hidden),
 #report-modal:not(.hidden),
-#guide-modal:not(.hidden) {
+#guide-modal:not(.hidden),
+#activity-modal:not(.hidden) {
   position: fixed;
   inset: 0;
   display: flex;

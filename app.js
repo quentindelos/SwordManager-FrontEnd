@@ -120,7 +120,7 @@ function resetInactivityTimer() {
   if (userToken) {
     inactivityTimer = setTimeout(
       () => {
-        handleLogout();
+        handleLogout("auto");
         showToast("🔒 Session verrouillée automatiquement pour inactivité.");
       },
       5 * 60 * 1000,
@@ -746,7 +746,10 @@ function renderEntries(filter = "") {
   });
 }
 
-function handleLogout() {
+function handleLogout(reason = "manual") {
+  // 0. Trace la déconnexion tant que le token est encore valide
+  logActivityEvent(reason === "auto" ? "logout_auto" : "logout");
+
   // 1. 🛠️ NETTOYAGE : Supprime immédiatement la session du navigateur (sessionStorage)
   sessionStorage.removeItem("sword_session");
 
@@ -1335,6 +1338,8 @@ const activityListEl = document.getElementById("activity-list");
 
 const ACTIVITY_LABELS = {
   login: { icon: "🔑", text: "Connexion" },
+  logout: { icon: "🚪", text: "Déconnexion" },
+  logout_auto: { icon: "⏳", text: "Déconnexion automatique (inactivité)" },
   item_created: { icon: "➕", text: "Identifiant ajouté" },
   item_updated: { icon: "✏️", text: "Identifiant modifié" },
   item_deleted: { icon: "🗑️", text: "Identifiant supprimé" },
