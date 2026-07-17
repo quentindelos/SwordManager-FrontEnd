@@ -1456,10 +1456,66 @@ if (folderFilter) {
 const reportBtn = document.getElementById("report-btn");
 const reportModal = document.getElementById("report-modal");
 const reportCloseBtn = document.getElementById("report-close-btn");
+const totalCountEl = document.getElementById("total-count");
 const weakCountEl = document.getElementById("weak-count");
 const pwnedCountEl = document.getElementById("pwned-count");
 const reportListPwnedEl = document.getElementById("report-list-pwned");
 const reportListWeakEl = document.getElementById("report-list-weak");
+const reportScoreDonut = document.getElementById("report-score-donut");
+const reportScoreValueEl = document.getElementById("report-score-value");
+const reportScoreLabelEl = document.getElementById("report-score-label");
+const reportScoreHintEl = document.getElementById("report-score-hint");
+
+// Met à jour le score global, le donut et son résumé textuel
+function renderSecurityScore(total, weakOnlyCount, pwnedCount) {
+  const healthyCount = Math.max(total - weakOnlyCount - pwnedCount, 0);
+  const score = total === 0 ? 100 : Math.round((healthyCount / total) * 100);
+
+  reportScoreValueEl.textContent = score;
+
+  let label, hint, color;
+  if (total === 0) {
+    label = "Aucune donnée";
+    hint = "Ajoutez des identifiants pour obtenir une analyse.";
+    color = "var(--color-text-muted)";
+  } else if (score >= 90) {
+    label = "Excellent";
+    hint = "Votre coffre est globalement très bien protégé.";
+    color = "var(--color-success)";
+  } else if (score >= 70) {
+    label = "Bon";
+    hint = "Quelques identifiants méritent votre attention.";
+    color = "var(--color-success)";
+  } else if (score >= 40) {
+    label = "Moyen";
+    hint = "Plusieurs mots de passe sont faibles ou compromis.";
+    color = "var(--color-warning)";
+  } else {
+    label = "À risque";
+    hint = "Votre coffre contient de nombreux mots de passe à corriger en priorité.";
+    color = "var(--color-danger)";
+  }
+
+  reportScoreLabelEl.textContent = label;
+  reportScoreLabelEl.style.color = color;
+  reportScoreHintEl.textContent = hint;
+
+  if (total === 0) {
+    reportScoreDonut.style.background = "var(--color-border)";
+    return;
+  }
+
+  // Construit le donut CSS (conic-gradient) : sains / faibles / compromis
+  const healthyDeg = (healthyCount / total) * 360;
+  const weakDeg = (weakOnlyCount / total) * 360;
+  const pwnedDeg = (pwnedCount / total) * 360;
+
+  reportScoreDonut.style.background = `conic-gradient(
+    var(--color-success) 0deg ${healthyDeg}deg,
+    var(--color-warning) ${healthyDeg}deg ${healthyDeg + weakDeg}deg,
+    var(--color-danger) ${healthyDeg + weakDeg}deg ${healthyDeg + weakDeg + pwnedDeg}deg
+  )`;
+}
 
 if (reportBtn) {
   reportBtn.addEventListener("click", async () => {
@@ -1472,9 +1528,17 @@ if (reportBtn) {
       "<p style='color: var(--color-text-muted);'>Analyse des fuites...</p>";
     reportListWeakEl.innerHTML =
       "<p style='color: var(--color-text-muted);'>Analyse de la force...</p>";
+    reportScoreValueEl.textContent = "–";
+    reportScoreLabelEl.textContent = "Analyse en cours…";
+    reportScoreLabelEl.style.color = "var(--color-text-muted)";
+    reportScoreHintEl.textContent = "Nous analysons vos identifiants.";
+    reportScoreDonut.style.background = "var(--color-border)";
+    totalCountEl.textContent = "0";
     reportModal.classList.remove("hidden");
 
+    let totalAnalyzed = 0;
     let weakCounter = 0;
+    let weakOnlyCounter = 0;
     let pwnedCounter = 0;
 
     // Fonction interne sécurisée pour injecter une ligne sans utiliser innerHTML
@@ -1535,6 +1599,7 @@ if (reportBtn) {
       if (entry.name && entry.name.startsWith("[Dossier Vide]")) {
         continue; // Passe directement à l'élément suivant sans l'analyser
       }
+      totalAnalyzed++;
       let isWeak = false;
       let isPwned = false;
       let weakReasons = [];
@@ -1580,6 +1645,7 @@ if (reportBtn) {
       }
       if (isWeak) {
         weakCounter++;
+        if (!isPwned) weakOnlyCounter++;
         // Au premier élément trouvé, on nettoie le texte d'attente "Analyse de la force..."
         if (weakCounter === 1) reportListWeakEl.innerHTML = "";
         appendReportRow(
@@ -1591,9 +1657,11 @@ if (reportBtn) {
       }
     }
 
-    // 4. Mise à jour des compteurs globaux
+    // 4. Mise à jour des compteurs globaux et du score
+    totalCountEl.textContent = totalAnalyzed;
     weakCountEl.textContent = weakCounter;
     pwnedCountEl.textContent = pwnedCounter;
+    renderSecurityScore(totalAnalyzed, weakOnlyCounter, pwnedCounter);
 
     // 5. Affichage des états de succès si les compteurs sont restés à 0
     if (pwnedCounter === 0) {

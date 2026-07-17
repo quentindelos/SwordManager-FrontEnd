@@ -1204,3 +1204,258 @@ button {
   }
 }
 }
+
+/* ==========================================================================
+   🕓 HISTORIQUE D'ACTIVITÉ : FILTRES ET LIGNES
+   ========================================================================== */
+.filter-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.filter-chip {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.filter-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.filter-chip.active {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary-hover);
+}
+
+.activity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 12px 12px;
+  border-bottom: 1px solid var(--color-border);
+  border-left: 3px solid transparent;
+}
+
+.activity-row:last-child {
+  border-bottom: none;
+}
+
+.activity-row-connexion {
+  border-left-color: var(--color-primary);
+}
+
+.activity-row-ajout {
+  border-left-color: var(--color-success);
+}
+
+.activity-row-modification {
+  border-left-color: var(--color-warning);
+}
+
+.activity-row-suppression {
+  border-left-color: var(--color-danger);
+}
+
+.activity-row-consultation {
+  border-left-color: #38bdf8;
+}
+
+/* ==========================================================================
+   📊 RAPPORT DE SÉCURITÉ
+   ========================================================================== */
+.report-card {
+  max-width: 620px !important;
+}
+
+.report-score-section {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 18px;
+  margin-bottom: 18px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.report-donut {
+  flex-shrink: 0;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--color-border) 0deg 360deg
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.4s ease;
+}
+
+.report-donut-hole {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: var(--color-surface-alt);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.report-donut-hole span {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.report-donut-hole small {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+}
+
+.report-score-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.report-score-label {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+
+.report-score-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+}
+
+.report-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.report-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.report-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.report-dot-healthy {
+  background: var(--color-success);
+}
+
+.report-dot-weak {
+  background: var(--color-warning);
+}
+
+.report-dot-pwned {
+  background: var(--color-danger);
+}
+
+.report-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.report-stat-tile {
+  background: var(--color-surface-alt);
+  padding: 14px;
+  border-radius: var(--radius-md);
+  text-align: center;
+  border: 1px solid var(--color-border);
+}
+
+.report-stat-icon {
+  font-size: 1.3rem;
+}
+
+.report-stat-tile h4 {
+  margin: 6px 0 2px 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.report-stat-tile p {
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+.report-stat-tile-warning p {
+  color: var(--color-warning);
+}
+
+.report-stat-tile-danger p {
+  color: var(--color-danger);
+}
+
+.report-lists-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.report-list {
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--color-surface-alt);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+
+.report-list-pwned {
+  border: 1px solid #ef4444;
+}
+
+.report-list-weak {
+  border: 1px solid #f59e0b;
+}
+
+@media (max-width: 560px) {
+  .report-score-section {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .report-legend {
+    justify-content: center;
+  }
+
+  .report-stats-row {
+    grid-template-columns: 1fr;
+  }
+}

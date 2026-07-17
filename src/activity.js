@@ -4,16 +4,38 @@ const API_URL =
     ? "http://localhost:3000"
     : "https://api.swordmanager.cloud";
 
+// Chaque action est rattachée à une catégorie utilisée pour le filtrage et le code couleur
 const ACTIVITY_LABELS = {
-  login: { icon: "🔑", text: "Connexion" },
-  logout: { icon: "🚪", text: "Déconnexion" },
-  logout_auto: { icon: "⏳", text: "Déconnexion automatique (inactivité)" },
-  item_created: { icon: "➕", text: "Identifiant ajouté" },
-  item_updated: { icon: "✏️", text: "Identifiant modifié" },
-  item_deleted: { icon: "🗑️", text: "Identifiant supprimé" },
-  password_copied: { icon: "📋", text: "Mot de passe copié" },
-  password_revealed: { icon: "👁️", text: "Mot de passe affiché" },
+  login: { text: "Connexion", category: "connexion" },
+  logout: { text: "Déconnexion", category: "connexion" },
+  logout_auto: {
+    text: "Déconnexion automatique (inactivité)",
+    category: "connexion",
+  },
+  item_created: { text: "Identifiant ajouté", category: "ajout" },
+  folder_created: { text: "Dossier créé", category: "ajout" },
+  item_updated: { text: "Identifiant modifié", category: "modification" },
+  item_moved: { text: "Identifiant déplacé", category: "modification" },
+  item_deleted: { text: "Identifiant supprimé", category: "suppression" },
+  folder_deleted: { text: "Dossier supprimé", category: "suppression" },
+  password_copied: { text: "Mot de passe copié", category: "consultation" },
+  password_revealed: {
+    text: "Mot de passe affiché",
+    category: "consultation",
+  },
 };
+
+const CATEGORIES = [
+  { id: "all", label: "Tout" },
+  { id: "connexion", label: "Connexions" },
+  { id: "ajout", label: "Ajouts" },
+  { id: "modification", label: "Modifications" },
+  { id: "suppression", label: "Suppressions" },
+  { id: "consultation", label: "Mots de passe consultés" },
+];
+
+let allLogs = [];
+let activeCategory = "all";
 
 function showToast(message) {
   const toast = document.getElementById("toast");
@@ -63,14 +85,46 @@ function dayLabelFor(date) {
   });
 }
 
-function renderActivity(logs) {
+function renderFilters() {
+  const container = document.getElementById("activity-filters");
+  if (!container) return;
+  container.innerHTML = "";
+
+  CATEGORIES.forEach((category) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "filter-chip";
+    chip.classList.toggle("active", activeCategory === category.id);
+    chip.textContent = category.label;
+    chip.addEventListener("click", () => {
+      activeCategory = category.id;
+      renderFilters();
+      renderActivity();
+    });
+    container.appendChild(chip);
+  });
+}
+
+function renderActivity() {
   const container = document.getElementById("activity-page-list");
   container.innerHTML = "";
+
+  const logs =
+    activeCategory === "all"
+      ? allLogs
+      : allLogs.filter(
+          (log) =>
+            (ACTIVITY_LABELS[log.action]?.category || "autre") ===
+            activeCategory,
+        );
 
   if (logs.length === 0) {
     const empty = document.createElement("p");
     empty.style.color = "var(--color-text-muted)";
-    empty.textContent = "Aucune activité enregistrée pour le moment.";
+    empty.textContent =
+      allLogs.length === 0
+        ? "Aucune activité enregistrée pour le moment."
+        : "Aucune activité ne correspond à ce filtre.";
     container.appendChild(empty);
     return;
   }
@@ -102,17 +156,12 @@ function renderActivity(logs) {
     }
 
     const meta = ACTIVITY_LABELS[log.action] || {
-      icon: "•",
       text: log.action,
+      category: "autre",
     };
 
     const row = document.createElement("div");
-    row.style.borderBottom = "1px solid var(--color-border)";
-    row.style.padding = "12px 0";
-    row.style.display = "flex";
-    row.style.justifyContent = "space-between";
-    row.style.alignItems = "center";
-    row.style.gap = "10px";
+    row.className = `activity-row activity-row-${meta.category}`;
 
     const infoDiv = document.createElement("div");
     infoDiv.style.flex = "1";
@@ -120,7 +169,7 @@ function renderActivity(logs) {
 
     const strongAction = document.createElement("strong");
     strongAction.style.display = "block";
-    strongAction.textContent = `${meta.icon} ${meta.text}${
+    strongAction.textContent = `${meta.text}${
       log.detail ? " — " + log.detail : ""
     }`;
 
@@ -166,13 +215,14 @@ async function loadActivity() {
     });
     if (!res.ok) throw new Error("Failed to load activity log.");
 
-    const logs = await res.json();
-    renderActivity(logs);
+    allLogs = await res.json();
+    renderFilters();
+    renderActivity();
   } catch (err) {
     console.error(err);
     container.innerHTML =
       "<p style='color: var(--color-danger);'>Impossible de charger l'historique.</p>";
-    showToast("☁️ Le serveur est injoignable.");
+    showToast("Le serveur est injoignable.");
   }
 }
 
