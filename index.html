@@ -10,8 +10,14 @@
   <body>
     <div id="toast" class="toast-hidden" role="status" aria-live="polite"></div>
 
+    <!-- ÉCRAN DE CHARGEMENT (évite d'afficher brièvement le formulaire de connexion
+         pendant la vérification d'une session déjà active) -->
+    <div id="boot-screen" class="hidden">
+      <div class="boot-spinner" aria-hidden="true"></div>
+    </div>
+
     <!-- ÉCRAN DE CONNEXION / INSCRIPTION -->
-    <div id="master-screen">
+    <div id="master-screen" class="hidden">
       <div class="auth-card">
         <div class="auth-brand">
           <div class="brand-logo">🗡️</div>

@@ -1459,3 +1459,32 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   ⏳ ÉCRAN DE CHARGEMENT (restauration de session)
+   ========================================================================== */
+#boot-screen:not(.hidden) {
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+}
+
+#boot-screen.hidden {
+  display: none;
+}
+
+.boot-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: boot-spin 0.7s linear infinite;
+}
+
+@keyframes boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

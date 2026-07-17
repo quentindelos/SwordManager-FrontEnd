@@ -11,8 +11,20 @@ let inactivityInterval = null;
 
 const INACTIVITY_LIMIT_MS = 5 * 60 * 1000;
 
+const bootScreen = document.getElementById("boot-screen");
 const masterScreen = document.getElementById("master-screen");
 const vaultScreen = document.getElementById("vault-screen");
+
+// Décision synchrone, avant toute opération asynchrone : si une session est stockée,
+// on affiche un écran de chargement neutre le temps de la valider, plutôt que de
+// laisser apparaître brièvement le formulaire de connexion (flash visible sinon,
+// le temps que restoreSession() termine son import de clé + son appel réseau).
+if (sessionStorage.getItem("sword_session")) {
+  bootScreen.classList.remove("hidden");
+} else {
+  masterScreen.classList.remove("hidden");
+}
+
 const masterEmailInput = document.getElementById("master-email");
 const masterPasswordInput = document.getElementById("master-password");
 const unlockBtn = document.getElementById("unlock-btn");
@@ -444,15 +456,33 @@ async function fetchVaultItems() {
 }
 
 // 🔄 RESTAURATION DE SESSION (évite la déconnexion au rechargement de la page / Ctrl+R)
+// Bascule finale de l'écran de chargement vers le coffre ou le formulaire de connexion.
+// Appelée depuis chaque issue possible de restoreSession() pour ne jamais laisser
+// l'écran de chargement affiché indéfiniment.
+function resolveBootScreen(unlocked) {
+  bootScreen.classList.add("hidden");
+  if (unlocked) {
+    masterScreen.classList.add("hidden");
+    vaultScreen.classList.remove("hidden");
+  } else {
+    vaultScreen.classList.add("hidden");
+    masterScreen.classList.remove("hidden");
+  }
+}
+
 async function restoreSession() {
   const raw = sessionStorage.getItem("sword_session");
-  if (!raw) return;
+  if (!raw) {
+    resolveBootScreen(false);
+    return;
+  }
 
   let session;
   try {
     session = JSON.parse(raw);
   } catch {
     sessionStorage.removeItem("sword_session");
+    resolveBootScreen(false);
     return;
   }
 
@@ -463,6 +493,7 @@ async function restoreSession() {
     Date.now() > session.expiresAt
   ) {
     sessionStorage.removeItem("sword_session");
+    resolveBootScreen(false);
     return;
   }
 
@@ -479,16 +510,15 @@ async function restoreSession() {
     const ok = await fetchVaultItems();
     if (!ok) throw new Error("Session invalide ou expirée côté serveur.");
 
-    masterScreen.classList.add("hidden");
-    vaultScreen.classList.remove("hidden");
-
     initSecurityListeners();
     renderEntries();
+    resolveBootScreen(true);
   } catch (e) {
     console.error("Restauration de session impossible :", e);
     userToken = null;
     vaultKey = null;
     sessionStorage.removeItem("sword_session");
+    resolveBootScreen(false);
   }
 }
 
