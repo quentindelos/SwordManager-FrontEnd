@@ -1,6 +1,10 @@
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://localhost:3000" 
+    ? "http://localhost:3000"
     : "https://api.swordmanager.cloud";
+
+// Vérification non bloquante : ne retarde pas l'affichage du formulaire de
+// connexion, redirige seulement si le backend s'avère injoignable.
+redirectIfBackendDown(API_URL);
 
 // État de session strict en mémoire volatile
 let vaultEntries = [];

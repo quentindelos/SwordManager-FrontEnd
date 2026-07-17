@@ -34,6 +34,8 @@ const CATEGORIES = [
   { id: "consultation", label: "Mots de passe consultés" },
 ];
 
+redirectIfBackendDown(API_URL);
+
 let allLogs = [];
 let activeCategory = "all";
 
@@ -214,7 +216,7 @@ function lockAndRedirectToLogin() {
     }).catch(() => {});
   }
 
-  window.location.href = "index.html";
+  window.location.href = "/";
 }
 
 async function loadActivity() {

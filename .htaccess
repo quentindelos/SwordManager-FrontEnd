@@ -1,0 +1,30 @@
+# NOTE : ce fichier n'a AUCUN effet sur le déploiement actuel (Cloud Run sert le
+# site via nginx, voir Dockerfile + nginx/app.conf — .htaccess est une
+# fonctionnalité Apache, ignorée par nginx). Il est fourni pour la portabilité
+# (hébergement Apache/mutualisé, environnement de dev local type XAMPP/MAMP) et
+# reproduit le même comportement que la config nginx : URLs sans extension,
+# page 404 personnalisée, bascule en mode maintenance.
+#
+# Sur le déploiement réel, ces comportements sont gérés par nginx/app.conf et
+# nginx/maintenance.conf.
+
+RewriteEngine On
+
+# Mode maintenance : si le fichier .maintenance existe à la racine du site, toute
+# requête reçoit la page de maintenance (sauf les quelques fichiers nécessaires
+# pour l'afficher correctement).
+RewriteCond %{REQUEST_URI} !^/maintenance\.html$
+RewriteCond %{REQUEST_URI} !^/src/style\.css$
+RewriteCond %{REQUEST_URI} !^/assets/favicon\.svg$
+RewriteCond %{DOCUMENT_ROOT}/.maintenance -f
+RewriteRule ^ /maintenance.html [L,R=503]
+
+# URLs propres : /activity sert activity.html sans exposer l'extension dans la
+# barre d'adresse (pas de redirection, juste une réécriture interne).
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.html -f
+RewriteRule ^(.*)$ $1.html [L]
+
+ErrorDocument 404 /404.html
+ErrorDocument 503 /maintenance.html
