@@ -3,7 +3,7 @@ FROM nginx:alpine
 # Copie explicite du contenu public uniquement — évite d'exposer nginx/, .git,
 # .github, README.md ou .htaccess (qui n'a aucun effet sur nginx, voir README) via
 # le serveur statique.
-COPY index.html activity.html forgot-password.html reset-password.html 404.html maintenance.html /usr/share/nginx/html/
+COPY index.html activity.html 404.html maintenance.html /usr/share/nginx/html/
 COPY src/ /usr/share/nginx/html/src/
 COPY assets/ /usr/share/nginx/html/assets/
 
