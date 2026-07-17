@@ -75,6 +75,19 @@ function showToast(message) {
   }, 4000);
 }
 
+// Envoie un événement d'activité au backend (best-effort, ne bloque jamais l'UI)
+function logActivityEvent(action, detail) {
+  if (!userToken) return;
+  fetch(`${API_URL}/activity`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${userToken}`,
+    },
+    body: JSON.stringify({ action, detail }),
+  }).catch((err) => console.error("[Activity Log Error]:", err));
+}
+
 // ==========================================================================
 // 🚨 GESTIONNAIRE D'ERREURS D'API INTELLIGENT (DEV VS PROD)
 // ==========================================================================
@@ -605,6 +618,7 @@ function renderEntries(filter = "") {
         pwSpan.textContent = entry.password;
         pwSpan.className = "";
         showToast("👁️ Affichage temporaire (15 secondes)");
+        logActivityEvent("password_revealed", entry.name || null);
 
         // ⏳ Lance le compte à rebours de sécurité
         hideTimeout = setTimeout(() => {
@@ -619,7 +633,21 @@ function renderEntries(filter = "") {
       }
     });
 
+    const copyPwBtn = document.createElement("button");
+    copyPwBtn.className = "toggle-pw-btn";
+    copyPwBtn.textContent = "📋";
+    copyPwBtn.title = "Copier le mot de passe";
+    copyPwBtn.style.flexShrink = "0";
+
+    copyPwBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(entry.password).then(() => {
+        showToast("📋 Mot de passe copié !");
+        logActivityEvent("password_copied", entry.name || null);
+      });
+    });
+
     tdPassword.appendChild(pwSpan);
+    tdPassword.appendChild(copyPwBtn);
     tdPassword.appendChild(toggleBtn);
     tr.appendChild(tdPassword);
 
@@ -1294,6 +1322,107 @@ if (exportBtn) {
 if (folderFilter) {
   folderFilter.addEventListener("change", () => {
     renderEntries(searchInput.value);
+  });
+}
+
+// ==========================================================================
+// 🕓 HISTORIQUE D'ACTIVITÉ DU COMPTE
+// ==========================================================================
+const activityBtn = document.getElementById("activity-btn");
+const activityModal = document.getElementById("activity-modal");
+const activityCloseBtn = document.getElementById("activity-close-btn");
+const activityListEl = document.getElementById("activity-list");
+
+const ACTIVITY_LABELS = {
+  login: { icon: "🔑", text: "Connexion" },
+  item_created: { icon: "➕", text: "Identifiant ajouté" },
+  item_updated: { icon: "✏️", text: "Identifiant modifié" },
+  item_deleted: { icon: "🗑️", text: "Identifiant supprimé" },
+  password_copied: { icon: "📋", text: "Mot de passe copié" },
+  password_revealed: { icon: "👁️", text: "Mot de passe affiché" },
+};
+
+function closeActivityModal() {
+  if (activityModal) activityModal.classList.add("hidden");
+}
+
+if (activityBtn) {
+  activityBtn.addEventListener("click", async () => {
+    activityListEl.innerHTML =
+      "<p style='color: var(--color-text-muted);'>Chargement de l'historique...</p>";
+    activityModal.classList.remove("hidden");
+
+    try {
+      const res = await fetch(`${API_URL}/activity`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      if (!res.ok) throw new Error("Failed to load activity log.");
+
+      const logs = await res.json();
+      activityListEl.innerHTML = "";
+
+      if (logs.length === 0) {
+        const empty = document.createElement("p");
+        empty.style.color = "var(--color-text-muted)";
+        empty.textContent = "Aucune activité enregistrée pour le moment.";
+        activityListEl.appendChild(empty);
+        return;
+      }
+
+      logs.forEach((log) => {
+        const meta = ACTIVITY_LABELS[log.action] || {
+          icon: "•",
+          text: log.action,
+        };
+
+        const row = document.createElement("div");
+        row.style.borderBottom = "1px solid var(--color-border)";
+        row.style.padding = "8px 0";
+        row.style.display = "flex";
+        row.style.justifyContent = "space-between";
+        row.style.alignItems = "center";
+        row.style.gap = "10px";
+
+        const infoDiv = document.createElement("div");
+        infoDiv.style.flex = "1";
+        infoDiv.style.minWidth = "0";
+
+        const strongAction = document.createElement("strong");
+        strongAction.style.display = "block";
+        strongAction.textContent = `${meta.icon} ${meta.text}${log.detail ? " — " + log.detail : ""}`;
+
+        const spanDate = document.createElement("span");
+        spanDate.style.color = "var(--color-text-muted)";
+        spanDate.style.fontSize = "0.8rem";
+        spanDate.textContent = new Date(log.createdAt).toLocaleString(
+          "fr-FR",
+        );
+
+        infoDiv.appendChild(strongAction);
+        infoDiv.appendChild(spanDate);
+
+        const spanIp = document.createElement("span");
+        spanIp.style.color = "var(--color-text-muted)";
+        spanIp.style.fontSize = "0.8rem";
+        spanIp.style.whiteSpace = "nowrap";
+        spanIp.textContent = log.ip || "";
+
+        row.appendChild(infoDiv);
+        row.appendChild(spanIp);
+        activityListEl.appendChild(row);
+      });
+    } catch (err) {
+      console.error(err);
+      activityListEl.innerHTML =
+        "<p style='color: var(--color-danger);'>Impossible de charger l'historique.</p>";
+    }
+  });
+}
+
+if (activityCloseBtn) activityCloseBtn.addEventListener("click", closeActivityModal);
+if (activityModal) {
+  activityModal.addEventListener("click", (e) => {
+    if (e.target === activityModal) closeActivityModal();
   });
 }
 

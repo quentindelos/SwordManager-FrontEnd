@@ -112,6 +112,9 @@
           <button id="report-btn" class="btn btn-ghost">
             📊 Rapport Sécurité
           </button>
+          <button id="activity-btn" class="btn btn-ghost">
+            🕓 Historique
+          </button>
           <button id="export-btn" class="btn btn-ghost">📥 Exporter</button>
           <button id="lock-btn" class="btn btn-ghost">🔒 Verrouiller</button>
         </div>
@@ -360,6 +363,31 @@
           </div>
         </div>
         <!-- 🔄 FIN DE LA SÉPARATION -->
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+   🕓 MODALE HISTORIQUE D'ACTIVITÉ DU COMPTE
+   ========================================================================== -->
+    <div id="activity-modal" class="hidden">
+      <div class="modal-card" style="max-width: 600px">
+        <div class="modal-header">
+          <h3>🕓 Historique d'activité</h3>
+          <button
+            type="button"
+            id="activity-close-btn"
+            class="modal-close"
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          id="activity-list"
+          style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px"
+        >
+          <!-- Rempli en JS -->
+        </div>
       </div>
     </div>
 
