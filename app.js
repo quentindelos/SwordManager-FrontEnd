@@ -6,7 +6,10 @@ const API_URL = window.location.hostname === "localhost" || window.location.host
 let vaultEntries = [];
 let userToken = null;
 let vaultKey = null;
-let inactivityTimer = null;
+let lastActivityAt = null;
+let inactivityInterval = null;
+
+const INACTIVITY_LIMIT_MS = 5 * 60 * 1000;
 
 const masterScreen = document.getElementById("master-screen");
 const vaultScreen = document.getElementById("vault-screen");
@@ -115,28 +118,49 @@ function handleApiError(error, errorElement) {
 }
 
 // SÉCURITÉ : AUTO-LOCK (5 min d'inactivité)
-function resetInactivityTimer() {
-  clearTimeout(inactivityTimer);
-  if (userToken) {
-    inactivityTimer = setTimeout(
-      () => {
-        handleLogout("auto");
-        showToast("🔒 Session verrouillée automatiquement pour inactivité.");
-      },
-      5 * 60 * 1000,
-    );
+//
+// Basé sur une horloge murale (Date.now()) vérifiée périodiquement, plutôt que sur
+// un unique setTimeout(5min) : un setTimeout long peut être fortement retardé par le
+// navigateur quand l'onglet est en arrière-plan (throttling), ce qui empêchait la
+// déconnexion de se déclencher à l'heure. Le contrôle sur "visibilitychange" permet
+// de rattraper immédiatement la vérification dès que l'onglet redevient actif.
+function markActivity() {
+  lastActivityAt = Date.now();
+}
+
+function checkInactivity() {
+  if (!userToken || !lastActivityAt) return;
+  if (Date.now() - lastActivityAt >= INACTIVITY_LIMIT_MS) {
+    handleLogout("auto");
+    showToast("🔒 Session verrouillée automatiquement pour inactivité.");
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === "visible") {
+    checkInactivity();
   }
 }
 
 function initSecurityListeners() {
-  window.addEventListener("mousemove", resetInactivityTimer);
-  window.addEventListener("keydown", resetInactivityTimer);
+  lastActivityAt = Date.now();
+  window.addEventListener("mousemove", markActivity);
+  window.addEventListener("keydown", markActivity);
+  window.addEventListener("click", markActivity);
+  window.addEventListener("scroll", markActivity, true);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  inactivityInterval = setInterval(checkInactivity, 15000);
 }
 
 function destroySecurityListeners() {
-  window.removeEventListener("mousemove", resetInactivityTimer);
-  window.removeEventListener("keydown", resetInactivityTimer);
-  clearTimeout(inactivityTimer);
+  window.removeEventListener("mousemove", markActivity);
+  window.removeEventListener("keydown", markActivity);
+  window.removeEventListener("click", markActivity);
+  window.removeEventListener("scroll", markActivity, true);
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  clearInterval(inactivityInterval);
+  inactivityInterval = null;
+  lastActivityAt = null;
 }
 
 // CRYPTO ENGINE (600 000 Itérations PBKDF2)
@@ -337,7 +361,6 @@ async function handleLogin() {
     vaultScreen.classList.remove("hidden");
 
     initSecurityListeners();
-    resetInactivityTimer();
     renderEntries();
     showToast("🔓 Coffre déverrouillé et synchronisé.");
   } catch (e) {
@@ -925,7 +948,7 @@ function loadEntryIntoForm(index) {
 // ÉVÈNEMENT
 unlockBtn.addEventListener("click", handleLogin);
 registerBtn.addEventListener("click", handleRegister);
-lockBtn.addEventListener("click", handleLogout);
+lockBtn.addEventListener("click", () => handleLogout("manual"));
 searchInput.addEventListener("input", () => {
   renderEntries(searchInput.value);
 });
@@ -1325,109 +1348,6 @@ if (exportBtn) {
 if (folderFilter) {
   folderFilter.addEventListener("change", () => {
     renderEntries(searchInput.value);
-  });
-}
-
-// ==========================================================================
-// 🕓 HISTORIQUE D'ACTIVITÉ DU COMPTE
-// ==========================================================================
-const activityBtn = document.getElementById("activity-btn");
-const activityModal = document.getElementById("activity-modal");
-const activityCloseBtn = document.getElementById("activity-close-btn");
-const activityListEl = document.getElementById("activity-list");
-
-const ACTIVITY_LABELS = {
-  login: { icon: "🔑", text: "Connexion" },
-  logout: { icon: "🚪", text: "Déconnexion" },
-  logout_auto: { icon: "⏳", text: "Déconnexion automatique (inactivité)" },
-  item_created: { icon: "➕", text: "Identifiant ajouté" },
-  item_updated: { icon: "✏️", text: "Identifiant modifié" },
-  item_deleted: { icon: "🗑️", text: "Identifiant supprimé" },
-  password_copied: { icon: "📋", text: "Mot de passe copié" },
-  password_revealed: { icon: "👁️", text: "Mot de passe affiché" },
-};
-
-function closeActivityModal() {
-  if (activityModal) activityModal.classList.add("hidden");
-}
-
-if (activityBtn) {
-  activityBtn.addEventListener("click", async () => {
-    activityListEl.innerHTML =
-      "<p style='color: var(--color-text-muted);'>Chargement de l'historique...</p>";
-    activityModal.classList.remove("hidden");
-
-    try {
-      const res = await fetch(`${API_URL}/activity`, {
-        headers: { Authorization: `Bearer ${userToken}` },
-      });
-      if (!res.ok) throw new Error("Failed to load activity log.");
-
-      const logs = await res.json();
-      activityListEl.innerHTML = "";
-
-      if (logs.length === 0) {
-        const empty = document.createElement("p");
-        empty.style.color = "var(--color-text-muted)";
-        empty.textContent = "Aucune activité enregistrée pour le moment.";
-        activityListEl.appendChild(empty);
-        return;
-      }
-
-      logs.forEach((log) => {
-        const meta = ACTIVITY_LABELS[log.action] || {
-          icon: "•",
-          text: log.action,
-        };
-
-        const row = document.createElement("div");
-        row.style.borderBottom = "1px solid var(--color-border)";
-        row.style.padding = "8px 0";
-        row.style.display = "flex";
-        row.style.justifyContent = "space-between";
-        row.style.alignItems = "center";
-        row.style.gap = "10px";
-
-        const infoDiv = document.createElement("div");
-        infoDiv.style.flex = "1";
-        infoDiv.style.minWidth = "0";
-
-        const strongAction = document.createElement("strong");
-        strongAction.style.display = "block";
-        strongAction.textContent = `${meta.icon} ${meta.text}${log.detail ? " — " + log.detail : ""}`;
-
-        const spanDate = document.createElement("span");
-        spanDate.style.color = "var(--color-text-muted)";
-        spanDate.style.fontSize = "0.8rem";
-        spanDate.textContent = new Date(log.createdAt).toLocaleString(
-          "fr-FR",
-        );
-
-        infoDiv.appendChild(strongAction);
-        infoDiv.appendChild(spanDate);
-
-        const spanIp = document.createElement("span");
-        spanIp.style.color = "var(--color-text-muted)";
-        spanIp.style.fontSize = "0.8rem";
-        spanIp.style.whiteSpace = "nowrap";
-        spanIp.textContent = log.ip || "";
-
-        row.appendChild(infoDiv);
-        row.appendChild(spanIp);
-        activityListEl.appendChild(row);
-      });
-    } catch (err) {
-      console.error(err);
-      activityListEl.innerHTML =
-        "<p style='color: var(--color-danger);'>Impossible de charger l'historique.</p>";
-    }
-  });
-}
-
-if (activityCloseBtn) activityCloseBtn.addEventListener("click", closeActivityModal);
-if (activityModal) {
-  activityModal.addEventListener("click", (e) => {
-    if (e.target === activityModal) closeActivityModal();
   });
 }
 

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Historique d'activité - SwordManager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="toast" class="toast-hidden" role="status" aria-live="polite"></div>
+
+    <div id="vault-screen">
+      <header class="vault-header">
+        <div class="brand-mini">
+          <span aria-hidden="true">🗡️</span> SwordManager
+        </div>
+        <div class="header-actions">
+          <a href="index.html" class="btn btn-ghost">⬅️ Retour au coffre</a>
+        </div>
+      </header>
+
+      <main class="vault-main">
+        <div class="vault-title-row">
+          <h2>🕓 Historique d'activité</h2>
+          <p class="entries-count">
+            Connexions, ajouts, modifications, suppressions et consultations
+            de mots de passe sur votre compte.
+          </p>
+        </div>
+
+        <div id="activity-page-list" style="margin-top: 20px">
+          <!-- Rempli en JS -->
+        </div>
+      </main>
+    </div>
+
+    <script src="activity.js"></script>
+  </body>
+</html>
