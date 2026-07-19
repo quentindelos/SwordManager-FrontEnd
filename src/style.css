@@ -841,7 +841,8 @@ button {
    ========================================================================== */
 #confirm-modal:not(.hidden),
 #report-modal:not(.hidden),
-#guide-modal:not(.hidden) {
+#guide-modal:not(.hidden),
+#twofa-modal:not(.hidden) { /* 💡 Ajoute cette ligne ici */
   position: fixed;
   inset: 0;
   display: flex;
