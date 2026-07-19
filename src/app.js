@@ -10,6 +10,7 @@ redirectIfBackendDown(API_URL);
 let vaultEntries = [];
 let userToken = null;
 let vaultKey = null;
+let isTwoFactorActive = false; // 🛡️ Stocke l'état d'activation du 2FA pour la session courante
 
 const bootScreen = document.getElementById("boot-screen");
 const masterScreen = document.getElementById("master-screen");
@@ -55,6 +56,28 @@ const entryFormTitle = document.getElementById("entry-form-title");
 const modalCloseBtn = document.querySelector(".modal-close");
 const toggleMasterPwBtn = document.getElementById("toggle-master-pw");
 const entriesCountEl = document.getElementById("entries-count");
+
+// Variable volatile pour l'auth temporaire
+let temporaryPreAuthToken = null;
+
+// Éléments DOM d'authentification 2FA
+const classicLoginFields = document.getElementById("classic-login-fields");
+const otpLoginBlock = document.getElementById("otp-login-block");
+const loginOtpCode = document.getElementById("login-otp-code");
+
+// Éléments DOM de configuration 2FA
+const setup2FaBtn = document.getElementById("setup-2fa-btn");
+const twoFaModal = document.getElementById("twofa-modal");
+const twoFaModalTitle = document.getElementById("twofa-modal-title");
+const twoFaCloseCross = document.getElementById("twofa-close-cross");
+const twoFaCancelBtn = document.getElementById("twofa-cancel-btn");
+const twoFaConfirmBtn = document.getElementById("twofa-confirm-btn");
+const twoFaQrCodeImg = document.getElementById("twofa-qrcode-img");
+const twoFaVerificationToken = document.getElementById("twofa-verification-token");
+const twoFaError = document.getElementById("twofa-error");
+const twoFaSetupSection = document.getElementById("twofa-setup-section");
+const twoFaDisableSection = document.getElementById("twofa-disable-section");
+const twoFaInputLabel = document.getElementById("twofa-input-label");
 
 // UTILS : ENCODAGE & TOAST
 function strToArrayBuffer(str) {
@@ -277,6 +300,44 @@ async function handleLogin() {
   masterError.style.color = "#f97373";
   masterError.textContent = "";
 
+  // Étape 2 : Si on est déjà en cours de processus 2FA, on traite le code OTP
+  if (temporaryPreAuthToken) {
+    const otpCode = loginOtpCode.value.trim();
+    if (!otpCode || otpCode.length !== 6) {
+      masterError.textContent = "Veuillez entrer un code à 6 chiffres valide.";
+      return;
+    }
+
+    unlockBtn.disabled = true;
+    unlockBtn.textContent = "Vérification OTP...";
+
+    try {
+      const res = await fetch(`${API_URL}/auth/login/2fa`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preAuthToken: temporaryPreAuthToken, token: otpCode }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        masterError.textContent = data.message || "Code 2FA invalide.";
+        return;
+      }
+
+      // Succès de l'étape 2 : Finalisation de la session
+      isTwoFactorActive = true; // Si l'user s'est connecté via 2FA, le statut est actif
+      await finalizeUserSession(data, pwd, email);
+
+    } catch (e) {
+      handleApiError(e, masterError);
+    } finally {
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = "Se connecter";
+    }
+    return;
+  }
+
+  // Étape 1 : Authentification classique par identifiants
   if (!email || !pwd) {
     masterError.textContent = "Identifiants requis.";
     return;
@@ -289,7 +350,6 @@ async function handleLogin() {
   try {
     const { encryptionKey, authHash } = await deriveKeys(pwd, email);
 
-    // 1. Appel réseau vers l'API d'authentification d'abord
     const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -297,66 +357,79 @@ async function handleLogin() {
     });
     const data = await res.json();
 
-    // 2. Vérification du statut de la réponse
-    if (!res.ok || !data.token) {
-      masterError.style.color = "#f97373";
-
-      // On récupère la valeur de l'erreur renvoyée par le backend (authController.js)
+    if (!res.ok) {
       const errType = data && data.error ? data.error : "";
-
-      // Si le backend renvoie "AuthenticationError" (l'email n'existe pas ou le mdp est faux)
       if (errType === "AuthenticationError") {
-        masterError.textContent =
-          "Aucun compte n'existe avec cet email, ou vos identifiants sont incorrects. Veuillez en créer un !";
+        masterError.textContent = "Aucun compte ou identifiants incorrects.";
       } else {
-        // Pour les autres erreurs (ex: ValidationError, InternalServerError ou erreur locale)
-        masterError.textContent = data.error || "Identifiants erronés.";
+        masterError.textContent = data.message || "Identifiants erronés.";
       }
       return;
     }
 
-    // 3. Extraction des données une fois la connexion validée
-    userToken = data.token;
-    const rawKeyB64 = await decryptString(data.protectedKey, encryptionKey);
+    // Pivot : Si le compte requiert le 2FA
+    if (data.requires2FA) {
+      temporaryPreAuthToken = data.preAuthToken;
+      classicLoginFields.classList.add("hidden");
+      otpLoginBlock.classList.remove("hidden");
+      registerBtn.classList.add("hidden"); // Cache l'inscription pendant l'OTP
+      loginOtpCode.focus();
+      showToast("📱 Mot de passe validé. Entrez votre code 2FA.");
+      return;
+    }
 
-    // 🛠️ SÉCURITÉ & PERSISTANCE : Sauvegarde temporaire pour le rafraîchissement
-    // Alignée sur la durée de vie réelle du JWT ("1h", voir authController.js)
-    const sessionData = {
-      token: userToken,
-      keyB64: rawKeyB64,
-      expiresAt: Date.now() + 60 * 60 * 1000,
-    };
-    sessionStorage.setItem("sword_session", JSON.stringify(sessionData));
+    // Si pas de 2FA : Connexion directe
+    isTwoFactorActive = false;
+    await finalizeUserSession(data, pwd, email);
 
-    // 4. Importation de la clé en mémoire volatile
-    vaultKey = await crypto.subtle.importKey(
-      "raw",
-      base64ToBuf(rawKeyB64),
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"],
-    );
-
-    // 5. Récupération des secrets du coffre
-    await fetchVaultItems();
-
-    // Nettoyage de l'interface et bascule d'écran
-    masterPasswordInput.value = "";
-    masterScreen.classList.add("hidden");
-    vaultScreen.classList.remove("hidden");
-
-    initSecurityListeners();
-    renderEntries();
-    showToast("🔓 Coffre déverrouillé et synchronisé.");
   } catch (e) {
-    console.error(e);
-    masterError.textContent =
-      "Identifiants invalides ou échec de déchiffrement.";
+    handleApiError(e, masterError);
   } finally {
     unlockBtn.disabled = false;
     registerBtn.disabled = false;
     unlockBtn.textContent = "Se connecter";
   }
+}
+
+// Fonction utilitaire pour éviter la duplication de code lors de l'ouverture du coffre
+async function finalizeUserSession(data, pwd, email) {
+  const { encryptionKey } = await deriveKeys(pwd, email);
+  userToken = data.token;
+  const rawKeyB64 = await decryptString(data.protectedKey, encryptionKey);
+
+  const sessionData = {
+    token: userToken,
+    keyB64: rawKeyB64,
+    expiresAt: Date.now() + 60 * 60 * 1000,
+    isTwoFactorActive: isTwoFactorActive // Sauvegarde de l'état 2FA dans la session
+  };
+  sessionStorage.setItem("sword_session", JSON.stringify(sessionData));
+
+  vaultKey = await crypto.subtle.importKey(
+    "raw",
+    base64ToBuf(rawKeyB64),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"],
+  );
+
+  await fetchVaultItems();
+
+  // Reset de l'état d'affichage login
+  masterPasswordInput.value = "";
+  loginOtpCode.value = "";
+  temporaryPreAuthToken = null;
+  classicLoginFields.classList.remove("hidden");
+  otpLoginBlock.classList.add("hidden");
+  registerBtn.classList.remove("hidden");
+
+  masterScreen.classList.add("hidden");
+  vaultScreen.classList.remove("hidden");
+
+  updateTwoFaMenuButton(); // Synchronise l'affichage de l'en-tête
+  initSecurityListeners();
+  renderEntries();
+  showToast("🔓 Coffre déverrouillé et synchronisé.");
 }
 
 async function fetchVaultItems() {
@@ -471,6 +544,7 @@ async function restoreSession() {
 
   try {
     userToken = session.token;
+    isTwoFactorActive = session.isTwoFactorActive || false; // Restaure l'état d'activation 
     vaultKey = await crypto.subtle.importKey(
       "raw",
       base64ToBuf(session.keyB64),
@@ -482,6 +556,7 @@ async function restoreSession() {
     const ok = await fetchVaultItems();
     if (!ok) throw new Error("Session invalide ou expirée côté serveur.");
 
+    updateTwoFaMenuButton();
     initSecurityListeners();
     renderEntries();
     resolveBootScreen(true);
@@ -489,6 +564,7 @@ async function restoreSession() {
     console.error("Restauration de session impossible :", e);
     userToken = null;
     vaultKey = null;
+    isTwoFactorActive = false;
     sessionStorage.removeItem("sword_session");
     resolveBootScreen(false);
   }
@@ -838,6 +914,7 @@ function handleLogout(reason = "manual") {
   userToken = null;
   vaultKey = null;
   vaultEntries = [];
+  isTwoFactorActive = false; 
 
   // 3. Destruction des écouteurs d'inactivité (Auto-lock)
   destroySecurityListeners();
@@ -1281,7 +1358,7 @@ const trollMessages = [
   "Même l'authentification de mon vieux routeur de 2004 refuserait un truc pareil. 🔌",
   "Un script d'une ligne en Python trouverait ça en moins de deux millisecondes. 🐍",
   "C'est un mot de passe ou un code de carte fidélité ? Sois sérieux deux minutes. 🛒",
-  "Tu as confondu l'option 'Créer un mot de passe' avec 'Donner mes données au premier venu'. 🎁",
+  "Tu as confused l'option 'Créer un mot de passe' avec 'Donner mes données au premier venu'. 🎁",
   "Si j'étais un rançongiciel, je t'enverrais un message de remerciement. 🏴‍☠️",
   "Je crois que la jauge de force vient de faire une dépression nerveuse. 📉",
   "Mettre ça, c'est comme laisser la clé sur la serrure avec un panneau 'Entrez c'est ouvert'. 🚪",
@@ -1693,6 +1770,7 @@ const guideBtn = document.getElementById("guide-btn");
 const guideModal = document.getElementById("guide-modal");
 const guideOkBtn = document.getElementById("guide-ok-btn");
 
+
 if (guideBtn && guideModal) {
   guideBtn.addEventListener("click", () => {
     guideModal.classList.remove("hidden");
@@ -1704,7 +1782,6 @@ if (guideBtn && guideModal) {
     );
   }
 
-  // ❌ Écouteur sur la croix de fermeture
   const guideCloseCross = guideModal.querySelector(".modal-close");
   if (guideCloseCross) {
     guideCloseCross.addEventListener("click", () => {
@@ -1712,127 +1789,250 @@ if (guideBtn && guideModal) {
     });
   }
 
-  // Permet aussi de fermer en cliquant à côté de la modale guide
   guideModal.addEventListener("click", (e) => {
     if (e.target === guideModal) guideModal.classList.add("hidden");
   });
+}
 
-  // ==========================================================================
-  // 📁 LOGIQUE DE LA MODALE DOSSIER PERSONNALISÉE
-  // ==========================================================================
-  const addFolderBtn = document.getElementById("add-folder-btn");
-  const folderModal = document.getElementById("folder-modal");
-  const folderModalClose = document.getElementById("folder-modal-close");
-  const folderCancelBtn = document.getElementById("folder-cancel-btn");
-  const folderConfirmBtn = document.getElementById("folder-confirm-btn");
-  const newFolderNameInput = document.getElementById("new-folder-name");
-  const folderError = document.getElementById("folder-error");
+// ==========================================================================
+// 📁 LOGIQUE DE LA MODALE DOSSIER PERSONNALISÉE
+// ==========================================================================
+const addFolderBtn = document.getElementById("add-folder-btn");
+const folderModal = document.getElementById("folder-modal");
+const folderModalClose = document.getElementById("folder-modal-close");
+const folderCancelBtn = document.getElementById("folder-cancel-btn");
+const folderConfirmBtn = document.getElementById("folder-confirm-btn");
+const newFolderNameInput = document.getElementById("new-folder-name");
+const folderError = document.getElementById("folder-error");
 
-  // Ouvre la modale
-  if (addFolderBtn && folderModal) {
-    addFolderBtn.addEventListener("click", () => {
-      newFolderNameInput.value = "";
-      folderError.textContent = "";
-      folderModal.classList.remove("hidden");
-      newFolderNameInput.focus();
-    });
+if (addFolderBtn && folderModal) {
+  addFolderBtn.addEventListener("click", () => {
+    newFolderNameInput.value = "";
+    folderError.textContent = "";
+    folderModal.classList.remove("hidden");
+    newFolderNameInput.focus();
+  });
+}
+
+const closeFolderModal = () => {
+  if (folderModal) folderModal.classList.add("hidden");
+};
+
+if (folderModalClose) folderModalClose.addEventListener("click", closeFolderModal);
+if (folderCancelBtn) folderCancelBtn.addEventListener("click", closeFolderModal);
+
+if (folderModal) {
+  folderModal.addEventListener("click", (e) => {
+    if (e.target === folderModal) closeFolderModal();
+  });
+}
+
+if (folderConfirmBtn) {
+  folderConfirmBtn.addEventListener("click", async () => {
+    folderError.textContent = "";
+    const folderName = newFolderNameInput.value.trim();
+
+    if (!folderName) {
+      folderError.textContent = "Le nom du dossier ne peut pas être vide.";
+      return;
+    }
+
+    const folderExists = vaultEntries.some(
+      (entry) =>
+        entry.folder &&
+        entry.folder.toLowerCase() === folderName.toLowerCase(),
+    );
+
+    if (folderExists) {
+      folderError.textContent = "Ce dossier existe déjà !";
+      return;
+    }
+
+    const emptyPayload = { url: "", username: "", password: "" };
+
+    try {
+      folderConfirmBtn.disabled = true;
+      folderConfirmBtn.textContent = "Création...";
+
+      const encryptedData = await encryptString(JSON.stringify(emptyPayload), vaultKey);
+
+      const res = await fetch(`${API_URL}/vault`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({
+          type: "login",
+          label: `[Dossier Vide] ${folderName}`,
+          encryptedData: encryptedData,
+          folder: folderName,
+        }),
+      });
+
+      if (res.ok) {
+        await fetchVaultItems();
+        renderEntries(searchInput.value);
+        closeFolderModal();
+        showToast(`📁 Dossier "${folderName}" créé avec succès !`);
+      } else {
+        folderError.textContent = "Échec de la sauvegarde sur le serveur.";
+      }
+    } catch (err) {
+      console.error(err);
+      folderError.textContent = "Erreur technique lors de l'enregistrement.";
+    } finally {
+      folderConfirmBtn.disabled = false;
+      folderConfirmBtn.textContent = "Créer le dossier";
+    }
+  });
+
+  newFolderNameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      folderConfirmBtn.click();
+    }
+  });
+}
+
+// ==========================================================================
+// 🛡️ LOGIQUE DE CONFIGURATION, ACTIVATION ET DESACTIVATION DU 2FA
+// ==========================================================================
+function updateTwoFaMenuButton() {
+  if (!setup2FaBtn) return;
+  if (isTwoFactorActive) {
+    setup2FaBtn.innerHTML = '<span class="menu-item-icon" aria-hidden="true">🔓</span><span>Désactiver le 2FA</span>';
+  } else {
+    setup2FaBtn.innerHTML = '<span class="menu-item-icon" aria-hidden="true">🛡️</span><span>Activer le 2FA</span>';
   }
+}
 
-  // Ferme la modale
-  const closeFolderModal = () => {
-    folderModal.classList.add("hidden");
+if (setup2FaBtn) {
+  const close2FaModal = () => {
+    twoFaModal.classList.add("hidden");
+    twoFaVerificationToken.value = "";
+    twoFaError.textContent = "";
   };
 
-  if (folderModalClose)
-    folderModalClose.addEventListener("click", closeFolderModal);
-  if (folderCancelBtn)
-    folderCancelBtn.addEventListener("click", closeFolderModal);
-
-  // Ferme si on clique à l'extérieur de la carte
-  if (folderModal) {
-    folderModal.addEventListener("click", (e) => {
-      if (e.target === folderModal) closeFolderModal();
-    });
-  }
-
-  // Soumission du dossier
-  if (folderConfirmBtn) {
-    folderConfirmBtn.addEventListener("click", async () => {
-      folderError.textContent = "";
-      const folderName = newFolderNameInput.value.trim();
-
-      if (!folderName) {
-        folderError.textContent = "Le nom du dossier ne peut pas être vide.";
-        return;
-      }
-
-      // Vérification de doublon
-      const folderExists = vaultEntries.some(
-        (entry) =>
-          entry.folder &&
-          entry.folder.toLowerCase() === folderName.toLowerCase(),
-      );
-
-      if (folderExists) {
-        folderError.textContent = "Ce dossier existe déjà !";
-        return;
-      }
-
-      const emptyPayload = {
-        url: "",
-        username: "",
-        password: "",
-      };
-
+  // Clic sur le bouton du menu : s'adapte selon l'état d'activation 
+  setup2FaBtn.addEventListener("click", async () => {
+    twoFaError.textContent = "";
+    
+    if (isTwoFactorActive) {
+      // 🔓 CONFIGURATION VISUELLE : MODE DÉSACTIVATION 
+      twoFaModalTitle.textContent = "🔓 Désactiver le 2FA";
+      twoFaSetupSection.classList.add("hidden");
+      twoFaDisableSection.classList.remove("hidden");
+      twoFaInputLabel.textContent = "Entrez votre code OTP actuel pour confirmer la désactivation :";
+      twoFaConfirmBtn.textContent = "Désactiver la protection";
+      twoFaConfirmBtn.style.background = "var(--color-danger)";
+      
+      twoFaModal.classList.remove("hidden");
+      twoFaVerificationToken.focus();
+    } else {
+      // 🛡️ CONFIGURATION VISUELLE : MODE ACTIVATION 
       try {
-        folderConfirmBtn.disabled = true;
-        folderConfirmBtn.textContent = "Création...";
-
-        const encryptedData = await encryptString(
-          JSON.stringify(emptyPayload),
-          vaultKey,
-        );
-
-        const res = await fetch(`${API_URL}/vault`, {
+        const res = await fetch(`${API_URL}/auth/2fa/setup`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${userToken}`,
           },
-          body: JSON.stringify({
-            type: "login",
-            label: `[Dossier Vide] ${folderName}`,
-            encryptedData: encryptedData,
-            folder: folderName,
-          }),
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Impossible de générer le 2FA.");
 
-        if (res.ok) {
-          await fetchVaultItems();
-          renderEntries(searchInput.value);
-          closeFolderModal();
-          showToast(`📁 Dossier "${folderName}" créé avec succès !`);
-        } else {
-          folderError.textContent = "Échec de la sauvegarde sur le serveur.";
-        }
+        twoFaModalTitle.textContent = "🛡️ Activer le 2FA";
+        twoFaSetupSection.classList.remove("hidden");
+        twoFaDisableSection.classList.add("hidden");
+        twoFaInputLabel.textContent = "Entrez le code à 6 chiffres pour valider :";
+        twoFaConfirmBtn.textContent = "Activer";
+        twoFaConfirmBtn.style.background = "var(--color-primary)";
+        
+        // Injection du QR Code en Base64 reçu du backend 
+        twoFaQrCodeImg.src = data.qrCode;
+        twoFaModal.classList.remove("hidden");
+        twoFaVerificationToken.focus();
       } catch (err) {
         console.error(err);
-        folderError.textContent = "Erreur technique lors de l'enregistrement.";
-      } finally {
-        folderConfirmBtn.disabled = false;
-        folderConfirmBtn.textContent = "Créer le dossier";
+        showToast("❌ Erreur lors de l'initialisation du 2FA.");
       }
-    });
+    }
+  });
 
-    // Permet de valider en appuyant sur la touche "Entrée" dans l'input
-    newFolderNameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        folderConfirmBtn.click();
+  // Soumission du code dynamique à 6 chiffres 
+  twoFaConfirmBtn.addEventListener("click", async () => {
+    const code = twoFaVerificationToken.value.trim();
+    if (!code || code.length !== 6) {
+      twoFaError.textContent = "Veuillez entrer un code à 6 chiffres.";
+      return;
+    }
+
+    try {
+      twoFaConfirmBtn.disabled = true;
+      twoFaConfirmBtn.textContent = "Traitement...";
+
+      if (isTwoFactorActive) {
+        // 🛑 COMMUNICATE AVEC LA ROUTE DELETE DE DORIAN 
+        const res = await fetch(`${API_URL}/auth/2fa`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ token: code }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          isTwoFactorActive = false;
+          updateTwoFaMenuButton();
+          showToast("🔓 La double authentification a été désactivée.");
+          close2FaModal();
+        } else {
+          twoFaError.textContent = data.message || "Code incorrect, désactivation refusée.";
+        }
+      } else {
+        // 🟢 COMMUNICATE AVEC LA ROUTE VERIFY POUR ACTIVER 
+        const res = await fetch(`${API_URL}/auth/2fa/verify`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ token: code }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          isTwoFactorActive = true;
+          updateTwoFaMenuButton();
+          showToast("🛡️ Double authentification activée avec succès !");
+          close2FaModal();
+        } else {
+          twoFaError.textContent = data.message || "Code incorrect, réessayez.";
+        }
       }
-    });
-  }
+    } catch (err) {
+      twoFaError.textContent = "Erreur réseau lors de la communication avec le serveur.";
+    } finally {
+      twoFaConfirmBtn.disabled = false;
+    }
+  });
+
+  // Écouteurs de fermeture standard
+  twoFaCancelBtn.addEventListener("click", close2FaModal);
+  twoFaCloseCross.addEventListener("click", close2FaModal);
+  twoFaModal.addEventListener("click", (e) => {
+    if (e.target === twoFaModal) close2FaModal();
+  });
 }
 
+const close2FaModal = () => {
+    twoFaModal.classList.add("hidden");
+    twoFaVerificationToken.value = "";
+    twoFaError.textContent = "";
+    twoFaConfirmBtn.disabled = false; // 💡 Sécurité : réactive le bouton à chaque fermeture
+  };
 // Tente de restaurer une session active au chargement de la page (reload, retour d'onglet...)
 restoreSession();
