@@ -52,38 +52,64 @@
             créez-en un nouveau.
           </p>
 
-          <div class="field">
-            <label for="master-email">Adresse email</label>
-            <div class="input-icon">
-              <span class="icon" aria-hidden="true">✉️</span>
-              <input
-                type="email"
-                id="master-email"
-                placeholder="exemple@domaine.com"
-                autocomplete="username"
-              />
+          <!-- Bloc Identifiants classiques (Etape 1) -->
+          <div id="classic-login-fields">
+            <div class="field">
+              <label for="master-email">Adresse email</label>
+              <div class="input-icon">
+                <span class="icon" aria-hidden="true">✉️</span>
+                <input
+                  type="email"
+                  id="master-email"
+                  placeholder="exemple@domaine.com"
+                  autocomplete="username"
+                />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="master-password">Mot de passe maître</label>
+              <div class="input-icon">
+                <span class="icon" aria-hidden="true">🔑</span>
+                <input
+                  type="password"
+                  id="master-password"
+                  placeholder="Mot de passe maître"
+                  autocomplete="current-password"
+                />
+                <button
+                  type="button"
+                  id="toggle-master-pw"
+                  class="icon-btn"
+                  tabindex="-1"
+                  aria-label="Afficher le mot de passe"
+                >
+                  👁️
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="field">
-            <label for="master-password">Mot de passe maître</label>
-            <div class="input-icon">
-              <span class="icon" aria-hidden="true">🔑</span>
-              <input
-                type="password"
-                id="master-password"
-                placeholder="Mot de passe maître"
-                autocomplete="current-password"
-              />
-              <button
-                type="button"
-                id="toggle-master-pw"
-                class="icon-btn"
-                tabindex="-1"
-                aria-label="Afficher le mot de passe"
+          <!-- 2FA : Saisie du code OTP (Etape 2) -> Caché par défaut -->
+          <div id="otp-login-block" class="hidden">
+            <div class="field">
+              <label
+                for="login-otp-code"
+                style="color: var(--color-primary); font-weight: bold"
+                >Code de vérification 2FA</label
               >
-                👁️
-              </button>
+              <div class="input-icon">
+                <span class="icon" aria-hidden="true">📱</span>
+                <input
+                  type="text"
+                  id="login-otp-code"
+                  placeholder="Ex: 123456"
+                  inputmode="numeric"
+                  pattern="[0-8]{6}"
+                  maxlength="6"
+                  autocomplete="one-time-code"
+                />
+              </div>
             </div>
           </div>
 
@@ -127,7 +153,7 @@
               <span>Menu</span>
             </button>
             <div id="menu-dropdown-panel" class="menu-panel hidden">
-              <a id="activity-btn" href="/activity" class="menu-item">
+              <a id="activity-btn" href="/activity.html" class="menu-item">
                 <span class="menu-item-icon" aria-hidden="true">🕓</span>
                 <span>Historique</span>
               </a>
@@ -142,6 +168,10 @@
               <button id="export-btn" class="menu-item" type="button">
                 <span class="menu-item-icon" aria-hidden="true">📥</span>
                 <span>Exporter</span>
+              </button>
+              <button id="setup-2fa-btn" class="menu-item" type="button">
+                <span class="menu-item-icon" aria-hidden="true">🛡️</span>
+                <span>Activer le 2FA</span>
               </button>
             </div>
           </div>
@@ -304,7 +334,9 @@
             </div>
           </div>
           <div class="report-score-details">
-            <p id="report-score-label" class="report-score-label">Analyse en cours…</p>
+            <p id="report-score-label" class="report-score-label">
+              Analyse en cours…
+            </p>
             <p id="report-score-hint" class="report-score-hint">
               Nous analysons vos identifiants.
             </p>
@@ -574,6 +606,77 @@
             style="width: 100%"
           >
             Compris !
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- MODALE CONFIGURATION / DESACTIVATION 2FA -->
+    <div id="twofa-modal" class="hidden">
+      <div class="modal-card" style="max-width: 400px; text-align: center">
+        <div class="modal-header">
+          <h3 id="twofa-modal-title">🛡️ Double Authentification</h3>
+          <button
+            type="button"
+            id="twofa-close-cross"
+            class="modal-close"
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal-body" style="padding: 15px 0">
+          <!-- Section d'activation (QR Code) - Cachée si on désactive -->
+          <div id="twofa-setup-section">
+            <p class="hint">
+              Scannez ce QR Code avec Google Authenticator ou Bitwarden :
+            </p>
+            <img
+              id="twofa-qrcode-img"
+              src=""
+              alt="Code QR 2FA"
+              style="
+                max-width: 200px;
+                margin: 15px auto;
+                display: block;
+                border: 1px solid var(--color-border);
+                padding: 5px;
+                background: white;
+              "
+            />
+          </div>
+
+          <!-- Section de désactivation - Cachée si on active -->
+          <div
+            id="twofa-disable-section"
+            class="hidden"
+            style="margin-bottom: 15px"
+          >
+            <p style="color: var(--color-danger); font-weight: bold">
+              ⚠️ Vous êtes sur le point de désactiver la protection 2FA de votre
+              coffre-fort.
+            </p>
+          </div>
+
+          <div class="field" style="text-align: left">
+            <label for="twofa-verification-token" id="twofa-input-label"
+              >Entrez le code à 6 chiffres pour valider :</label
+            >
+            <input
+              type="text"
+              id="twofa-verification-token"
+              placeholder="Ex: 123456"
+              maxlength="6"
+              style="text-align: center; font-size: 1.2rem; letter-spacing: 4px"
+            />
+          </div>
+          <p id="twofa-error" class="error" role="alert"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="twofa-cancel-btn" class="btn btn-ghost">
+            Annuler
+          </button>
+          <button type="button" id="twofa-confirm-btn" class="btn btn-primary">
+            Valider
           </button>
         </div>
       </div>
