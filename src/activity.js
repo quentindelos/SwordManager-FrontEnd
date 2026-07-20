@@ -6,28 +6,39 @@ const API_URL =
 
 // Chaque action est rattachée à une catégorie utilisée pour le filtrage et le code couleur
 const ACTIVITY_LABELS = {
-  login: { text: "Connexion", category: "connexion" },
-  logout: { text: "Déconnexion", category: "connexion" },
-  logout_auto: {
+  // Connexions & Sessions
+  "login": { text: "Connexion", category: "connexion" },
+  "login_via_backup_code": { text: "Connexion via code de secours", category: "securite" },
+  "logout": { text: "Déconnexion", category: "connexion" },
+  "logout_auto": {
     text: "Déconnexion automatique (inactivité)",
     category: "connexion",
   },
-  item_created: { text: "Identifiant ajouté", category: "ajout" },
-  folder_created: { text: "Dossier créé", category: "ajout" },
-  item_updated: { text: "Identifiant modifié", category: "modification" },
-  item_moved: { text: "Identifiant déplacé", category: "modification" },
-  item_deleted: { text: "Identifiant supprimé", category: "suppression" },
-  folder_deleted: { text: "Dossier supprimé", category: "suppression" },
-  password_copied: { text: "Mot de passe copié", category: "consultation" },
-  password_revealed: {
+
+  // Événements 2FA & Sécurité 🔑
+  "2fa_setup_initiated": { text: "Configuration 2FA démarrée", category: "securite" },
+  "2fa_enabled": { text: "Double authentification activée", category: "securite" },
+  "2fa_disabled": { text: "Double authentification désactivée", category: "securite" },
+
+  // Éléments du coffre-fort
+  "item_created": { text: "Identifiant ajouté", category: "ajout" },
+  "folder_created": { text: "Dossier créé", category: "ajout" },
+  "item_updated": { text: "Identifiant modifié", category: "modification" },
+  "item_moved": { text: "Identifiant déplacé", category: "modification" },
+  "item_deleted": { text: "Identifiant supprimé", category: "suppression" },
+  "folder_deleted": { text: "Dossier supprimé", category: "suppression" },
+  "password_copied": { text: "Mot de passe copié", category: "consultation" },
+  "password_revealed": {
     text: "Mot de passe affiché",
     category: "consultation",
   },
 };
 
+// ⚠️ NE PAS OUBLIER CETTE DÉCLARATION
 const CATEGORIES = [
   { id: "all", label: "Tout" },
   { id: "connexion", label: "Connexions" },
+  { id: "securite", label: "Sécurité 2FA" },
   { id: "ajout", label: "Ajouts" },
   { id: "modification", label: "Modifications" },
   { id: "suppression", label: "Suppressions" },
