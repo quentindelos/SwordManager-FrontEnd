@@ -602,7 +602,7 @@ button {
     display: table-cell !important; /* Écrase le flex du JS sur ordinateur */
     white-space: nowrap;
   }
-  
+
   #entries-table td[data-label="Mot de passe"] span {
     display: inline-block;
     vertical-align: middle;
@@ -837,12 +837,81 @@ button {
 }
 
 /* ==========================================================================
+   🔑 STYLES POUR LES CODES DE SECOURS (RECOVER & ACTIVATION 2FA)
+   ========================================================================== */
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 4px;
+}
+
+.btn-link:hover {
+  color: var(--color-text);
+}
+
+.backup-codes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  background-color: var(--color-surface-alt);
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  margin: 15px 0;
+}
+
+.backup-code-item {
+  background: var(--color-surface);
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: monospace;
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: var(--color-text);
+  letter-spacing: 1px;
+}
+
+.warning-text {
+  font-size: 0.85rem;
+  color: var(--color-warning);
+  background-color: rgba(245, 158, 11, 0.1);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  text-align: left;
+  line-height: 1.4;
+}
+
+#backup-codes-modal:not(.hidden) {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4, 7, 18, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 2100;
+}
+
+/* Couleur de la bordure latérale pour les événements de sécurité 2FA */
+.activity-row-securite {
+  border-left-color: #a855f7; /* Violet / Purple */
+}
+
+/* ==========================================================================
    MODALE DE CONFIRMATION PERSONNALISÉE
    ========================================================================== */
 #confirm-modal:not(.hidden),
 #report-modal:not(.hidden),
 #guide-modal:not(.hidden),
-#twofa-modal:not(.hidden) { /* 💡 Ajoute cette ligne ici */
+#twofa-modal:not(.hidden) {
+  /* 💡 Ajoute cette ligne ici */
   position: fixed;
   inset: 0;
   display: flex;
@@ -1111,93 +1180,93 @@ button {
     }
   }
 
- /* ==========================================================================
+  /* ==========================================================================
    📱 ALIGNEMENT DE L'EMOJI ET FIX DES RETOURS À LA LIGNE INVOLONTAIRES
    ========================================================================== */
-@media (max-width: 768px) {
-  /* Empêche le label "Mot de passe" de casser son dernier caractère */
-  td[data-label="Mot de passe"]::before {
-    white-space: nowrap !important;
-    padding-right: 10px !important;
+  @media (max-width: 768px) {
+    /* Empêche le label "Mot de passe" de casser son dernier caractère */
+    td[data-label="Mot de passe"]::before {
+      white-space: nowrap !important;
+      padding-right: 10px !important;
+    }
+
+    /* Force la structure en ligne propre sur mobile */
+    td[data-label="Identifiant"],
+    td[data-label="Mot de passe"] {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+    }
+
+    /* Force le span et le bouton à faire bloc à la fin de la ligne sur mobile */
+    td[data-label="Identifiant"] > :not(::before),
+    td[data-label="Mot de passe"] > :not(::before) {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important; /* Fixe l'émoji collé à 6px après le texte */
+      justify-content: flex-end !important;
+    }
+
+    /* Bloque le saut de ligne involontaire du dernier point de mot de passe */
+    td[data-label="Identifiant"] span,
+    td[data-label="Mot de passe"] span {
+      flex: 0 1 auto !important;
+      text-align: right !important;
+      white-space: nowrap !important;
+    }
+
+    /* Autorise le mot de passe en clair à retourner à la ligne s'il est trop long */
+    td[data-label="Mot de passe"] span:not(.hidden-password) {
+      white-space: normal !important;
+      word-break: break-all !important;
+    }
+
+    td[data-label="Identifiant"] button,
+    td[data-label="Mot de passe"] button {
+      flex-shrink: 0 !important;
+      margin: 0 !important;
+      display: inline-block !important;
+    }
   }
 
-  /* Force la structure en ligne propre sur mobile */
-  td[data-label="Identifiant"],
-  td[data-label="Mot de passe"] {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-  }
-
-  /* Force le span et le bouton à faire bloc à la fin de la ligne sur mobile */
-  td[data-label="Identifiant"] > :not(::before),
-  td[data-label="Mot de passe"] > :not(::before) {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important; /* Fixe l'émoji collé à 6px après le texte */
-    justify-content: flex-end !important;
-  }
-
-  /* Bloque le saut de ligne involontaire du dernier point de mot de passe */
-  td[data-label="Identifiant"] span,
-  td[data-label="Mot de passe"] span {
-    flex: 0 1 auto !important; 
-    text-align: right !important;
-    white-space: nowrap !important;
-  }
-
-  /* Autorise le mot de passe en clair à retourner à la ligne s'il est trop long */
-  td[data-label="Mot de passe"] span:not(.hidden-password) {
-    white-space: normal !important;
-    word-break: break-all !important;
-  }
-
-  td[data-label="Identifiant"] button,
-  td[data-label="Mot de passe"] button {
-    flex-shrink: 0 !important;
-    margin: 0 !important;
-    display: inline-block !important;
-  }
-}
-
-/* ==========================================================================
+  /* ==========================================================================
    🏷️ BADGES DES DOSSIERS / CATÉGORIES (CORRIGÉ SANS ACCOLADE EN TROP)
    ========================================================================== */
-.name-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-}
-
-.folder-badge {
-  display: inline-flex !important;
-  align-items: center;
-  background-color: var(--color-primary-soft) !important;
-  color: var(--color-primary-hover) !important;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 3px 9px !important;
-  border-radius: 20px !important;
-  border: 1px solid rgba(99, 102, 241, 0.3) !important;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  width: auto !important;
-}
-
-.entry-title {
-  font-weight: 600;
-  color: var(--color-text);
-  font-size: 0.95rem;
-}
-
-@media (max-width: 768px) {
   .name-wrapper {
-    align-items: flex-end;
-    text-align: right;
-    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
   }
-}
+
+  .folder-badge {
+    display: inline-flex !important;
+    align-items: center;
+    background-color: var(--color-primary-soft) !important;
+    color: var(--color-primary-hover) !important;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 9px !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(99, 102, 241, 0.3) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    width: auto !important;
+  }
+
+  .entry-title {
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.95rem;
+  }
+
+  @media (max-width: 768px) {
+    .name-wrapper {
+      align-items: flex-end;
+      text-align: right;
+      width: 100%;
+    }
+  }
 }
 
 /* ==========================================================================
@@ -1293,9 +1362,7 @@ button {
   width: 108px;
   height: 108px;
   border-radius: 50%;
-  background: conic-gradient(
-    var(--color-border) 0deg 360deg
-  );
+  background: conic-gradient(var(--color-border) 0deg 360deg);
   display: flex;
   align-items: center;
   justify-content: center;
