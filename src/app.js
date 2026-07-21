@@ -92,7 +92,7 @@ const twoFaSecretText = document.getElementById("twofa-secret-text");
 // Éléments DOM Modale d'affichage des 10 Codes de secours
 const backupCodesModal = document.getElementById("backup-codes-modal");
 const backupCodesList = document.getElementById("backup-codes-list");
-const btnCopyBackupCodes = document.getElementById("btn-copy-backup-codes");
+const btnDownloadBackupCodes = document.getElementById("btn-download-backup-codes");
 const btnCloseBackupModal = document.getElementById("btn-close-backup-modal");
 
 // Basculement entre Code TOTP (6 chiffres) et Code de Secours au Login
@@ -366,7 +366,8 @@ async function handleLogin() {
           if (data.message === "Invalid backup code.") {
             masterError.textContent = "Code de secours invalide.";
           } else {
-            masterError.textContent = data.message || "Code de secours invalide.";
+            masterError.textContent =
+              data.message || "Code de secours invalide.";
           }
           return;
         }
@@ -375,7 +376,6 @@ async function handleLogin() {
         isTwoFactorActive = true;
         await finalizeUserSession(data, pwd, email);
         showToast("⚠️ Connecté via un code de secours.");
-
       } catch (e) {
         handleApiError(e, masterError);
       } finally {
@@ -383,12 +383,12 @@ async function handleLogin() {
         unlockBtn.textContent = "Se connecter";
       }
       return;
-
     } else {
       // 📱 OPTION B : Connexion via Code TOTP classique (/auth/login/2fa)
       const otpCode = loginOtpCode.value.trim();
       if (!otpCode || otpCode.length !== 6) {
-        masterError.textContent = "Veuillez entrer un code à 6 chiffres valide.";
+        masterError.textContent =
+          "Veuillez entrer un code à 6 chiffres valide.";
         return;
       }
 
@@ -419,7 +419,6 @@ async function handleLogin() {
         // Succès : Finalisation de la session
         isTwoFactorActive = true;
         await finalizeUserSession(data, pwd, email);
-
       } catch (e) {
         handleApiError(e, masterError);
       } finally {
@@ -476,7 +475,6 @@ async function handleLogin() {
     // Si le 2FA n'est pas activé sur le compte : Connexion directe
     isTwoFactorActive = false;
     await finalizeUserSession(data, pwd, email);
-
   } catch (e) {
     handleApiError(e, masterError);
   } finally {
@@ -1035,6 +1033,7 @@ function handleLogout(reason = "manual") {
   masterError.style.color = "#9ca3af";
   masterError.textContent = "Session verrouillée.";
 }
+
 // ==========================================================================
 // 📁 LOGIQUE DE SUPPRESSION DE DOSSIER (VERSION MODALE SÉCURISÉE)
 // ==========================================================================
@@ -1642,6 +1641,335 @@ if (folderFilter) {
 }
 
 // ==========================================================================
+// 📤 IMPORTATION DU COFFRE-FORT DEPUIS UN FICHIER (CSV / JSON - ZERO-KNOWLEDGE)
+// ==========================================================================
+const importBtn = document.getElementById("import-btn");
+const importModal = document.getElementById("import-modal");
+const importCloseCross = document.getElementById("import-close-cross");
+const importCancelBtn = document.getElementById("import-cancel-btn");
+const importConfirmBtn = document.getElementById("import-confirm-btn");
+const importFileInput = document.getElementById("import-file-input");
+const fileDropZone = document.getElementById("file-drop-zone");
+const fileDropText = document.getElementById("file-drop-text");
+const importPreviewContainer = document.getElementById(
+  "import-preview-container",
+);
+const importPreviewList = document.getElementById("import-preview-list");
+const importCountBadge = document.getElementById("import-count-badge");
+const importError = document.getElementById("import-error");
+const importSourceFormat = document.getElementById("import-source-format");
+
+let parsedImportEntries = [];
+
+// Helper pour découper correctement une ligne CSV en gérant les guillemets et virgules
+function parseCSVLine(line) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+// Analyse le contenu brut du fichier (JSON ou CSV)
+function processImportContent(text) {
+  parsedImportEntries = [];
+  importError.textContent = "";
+
+  const trimmedText = text.trim();
+
+  // 1. TENTATIVE DE PARSING JSON (Ex: Bitwarden Export JSON)
+  if (trimmedText.startsWith("{") || trimmedText.startsWith("[")) {
+    try {
+      const jsonData = JSON.parse(trimmedText);
+
+      // Cas Bitwarden : structure { items: [...] }
+      const items = Array.isArray(jsonData)
+        ? jsonData
+        : jsonData.items || jsonData.passwords || [];
+
+      if (items.length > 0) {
+        items.forEach((item) => {
+          // On ne prend que les comptes / logins
+          if (item.login || item.password || item.username) {
+            const name = item.name || item.title || "Identifiant importé";
+            const username = item.login?.username || item.username || "";
+            const password = item.login?.password || item.password || "";
+
+            // Récupération de la première URL disponible
+            let url = "";
+            if (item.login?.uris && item.login.uris.length > 0) {
+              url = item.login.uris[0].uri || "";
+            } else if (item.url) {
+              url = item.url;
+            }
+
+            // Récupération éventuelle du dossier
+            let folder = null;
+            if (jsonData.folders && item.folderId) {
+              const matchedFolder = jsonData.folders.find(
+                (f) => f.id === item.folderId,
+              );
+              if (matchedFolder) folder = matchedFolder.name;
+            }
+
+            if (name || password || username) {
+              parsedImportEntries.push({ name, url, username, password, folder });
+            }
+          }
+        });
+
+        if (parsedImportEntries.length > 0) {
+          renderImportPreview();
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Échec du parsing JSON, tentative en CSV...", e);
+    }
+  }
+
+  // 2. PARSING CSV (Si ce n'est pas du JSON)
+  const lines = trimmedText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 2) {
+    importError.textContent = "Le fichier semble vide ou invalide.";
+    importConfirmBtn.disabled = true;
+    return;
+  }
+
+  const header = parseCSVLine(lines[0]).map((h) =>
+    h.toLowerCase().replace(/^"|"$/g, ""),
+  );
+
+  let nameIdx = header.findIndex((h) =>
+    ["nom", "name", "title", "label"].includes(h),
+  );
+  let urlIdx = header.findIndex((h) =>
+    ["url", "login_url", "location", "website", "site"].includes(h),
+  );
+  let userIdx = header.findIndex((h) =>
+    [
+      "identifiant",
+      "username",
+      "login_username",
+      "email",
+      "user",
+      "login",
+    ].includes(h),
+  );
+  let passIdx = header.findIndex((h) =>
+    ["mot de passe", "password", "login_password", "pass"].includes(h),
+  );
+  let folderIdx = header.findIndex((h) =>
+    ["dossier", "folder", "category"].includes(h),
+  );
+
+  if (passIdx === -1)
+    passIdx = header.findIndex((h) => h.includes("pass") || h.includes("pwd"));
+  if (nameIdx === -1)
+    nameIdx = header.findIndex((h) => h.includes("name") || h.includes("nom"));
+  if (userIdx === -1)
+    userIdx = header.findIndex((h) => h.includes("user") || h.includes("mail"));
+  if (urlIdx === -1)
+    urlIdx = header.findIndex((h) => h.includes("url") || h.includes("web"));
+
+  if (passIdx === -1) passIdx = 3;
+  if (nameIdx === -1) nameIdx = 0;
+  if (urlIdx === -1) urlIdx = 1;
+  if (userIdx === -1) userIdx = 2;
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]).map((c) => c.replace(/^"|"$/g, ""));
+    const name = cols[nameIdx] || "Sans nom";
+    const password = cols[passIdx] || "";
+    const url = cols[urlIdx] || "";
+    const username = cols[userIdx] || "";
+    const folder = folderIdx !== -1 && cols[folderIdx] ? cols[folderIdx] : null;
+
+    if (name || password || username) {
+      parsedImportEntries.push({ name, url, username, password, folder });
+    }
+  }
+
+  if (parsedImportEntries.length === 0) {
+    importError.textContent =
+      "Aucune donnée valide n'a pu être extraite du fichier.";
+    importConfirmBtn.disabled = true;
+    return;
+  }
+
+  renderImportPreview();
+}
+
+// Affiche la prévisualisation dans l'IHM
+function renderImportPreview() {
+  importCountBadge.textContent = parsedImportEntries.length;
+  importPreviewList.innerHTML = "";
+  parsedImportEntries.slice(0, 5).forEach((entry) => {
+    const div = document.createElement("div");
+    div.style.padding = "4px 0";
+    div.style.borderBottom = "1px dashed var(--color-border)";
+    div.style.fontSize = "0.82rem";
+    div.textContent = `🔑 ${entry.name} (${entry.username || "Pas d'identifiant"})`;
+    importPreviewList.appendChild(div);
+  });
+
+  if (parsedImportEntries.length > 5) {
+    const moreDiv = document.createElement("div");
+    moreDiv.style.fontSize = "0.78rem";
+    moreDiv.style.color = "var(--color-text-muted)";
+    moreDiv.style.marginTop = "4px";
+    moreDiv.textContent = `... et ${parsedImportEntries.length - 5} autre(s) élément(s).`;
+    importPreviewList.appendChild(moreDiv);
+  }
+
+  importPreviewContainer.classList.remove("hidden");
+  importConfirmBtn.disabled = false;
+}
+
+// Gestion des événements de la modale d'import
+if (importBtn && importModal) {
+  const closeImportModal = () => {
+    importModal.classList.add("hidden");
+    importFileInput.value = "";
+    parsedImportEntries = [];
+    importPreviewContainer.classList.add("hidden");
+    fileDropText.textContent =
+      "Cliquez ou glissez-déposez votre fichier CSV ou JSON ici";
+    importError.textContent = "";
+    importConfirmBtn.disabled = true;
+  };
+
+  importBtn.addEventListener("click", () => {
+    importModal.classList.remove("hidden");
+  });
+
+  if (importCloseCross)
+    importCloseCross.addEventListener("click", closeImportModal);
+  if (importCancelBtn)
+    importCancelBtn.addEventListener("click", closeImportModal);
+
+  fileDropZone.addEventListener("click", () => importFileInput.click());
+
+  fileDropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    fileDropZone.classList.add("drag-over");
+  });
+
+  fileDropZone.addEventListener("dragleave", () => {
+    fileDropZone.classList.remove("drag-over");
+  });
+
+  fileDropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    fileDropZone.classList.remove("drag-over");
+    if (e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      fileDropText.textContent = `📄 ${file.name}`;
+      const reader = new FileReader();
+      reader.onload = (evt) => processImportContent(evt.target.result);
+      reader.readAsText(file);
+    }
+  });
+
+  importFileInput.addEventListener("change", (e) => {
+    if (e.target.files.length > 0) {
+      const file = e.target.files[0];
+      fileDropText.textContent = `📄 ${file.name}`;
+      const reader = new FileReader();
+      reader.onload = (evt) => processImportContent(evt.target.result);
+      reader.readAsText(file);
+    }
+  });
+
+  // Exécution du chiffrement local et envoi en MASSE vers la route /vault/bulk
+  importConfirmBtn.addEventListener("click", async () => {
+    if (parsedImportEntries.length === 0) return;
+
+    importConfirmBtn.disabled = true;
+    importConfirmBtn.textContent = "Chiffrement local des données...";
+
+    try {
+      const payloadItems = [];
+
+      // 1. Chiffrement local de tous les éléments
+      for (const entry of parsedImportEntries) {
+        let rawUrl = entry.url ? entry.url.trim() : "";
+        if (rawUrl && !/^https?:\/\//i.test(rawUrl)) {
+          rawUrl = "https://" + rawUrl;
+        }
+
+        const entryDataClear = {
+          url: rawUrl,
+          username: entry.username || "",
+          password: entry.password || "",
+        };
+
+        const encryptedData = await encryptString(
+          JSON.stringify(entryDataClear),
+          vaultKey,
+        );
+
+        payloadItems.push({
+          type: "login",
+          label: entry.name || "Identifiant importé",
+          encryptedData: encryptedData,
+          folder: entry.folder || null,
+        });
+      }
+
+      importConfirmBtn.textContent = "Envoi serveur...";
+
+      // 2. Un seul appel API groupé (Evite le 429 Too Many Requests)
+      const res = await fetch(`${API_URL}/vault/bulk`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${userToken}`,
+        },
+        body: JSON.stringify({ items: payloadItems }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Erreur lors de l'envoi en masse.");
+      }
+
+      const result = await res.json();
+      await fetchVaultItems();
+      renderEntries(searchInput.value);
+      closeImportModal();
+      showToast(
+        `📥 Importation réussie ! ${result.count || payloadItems.length} identifiant(s) ajouté(s).`,
+      );
+    } catch (err) {
+      console.error("[Import Error]:", err);
+      importError.textContent =
+        err.message || "Erreur lors de la synchronisation des données.";
+    } finally {
+      importConfirmBtn.disabled = false;
+      importConfirmBtn.textContent = "💾 Lancer l'importation";
+    }
+  });
+}
+
+// ==========================================================================
 // 📊 GENERATION ET ANALYSE DU RAPPORT DE SECURITE
 // ==========================================================================
 const reportBtn = document.getElementById("report-btn");
@@ -1777,7 +2105,7 @@ if (reportBtn) {
       fixBtn.textContent = "Corriger";
       fixBtn.addEventListener("click", () => {
         reportModal.classList.add("hidden");
-        loadEntryIntoForm(vaultEntries.indexOf(entry));
+ loadEntryIntoForm(vaultEntries.indexOf(entry));
       });
 
       row.appendChild(infoDiv);
@@ -2102,100 +2430,102 @@ if (setup2FaBtn) {
 
   // Soumission du code dynamique à 6 chiffres
   twoFaConfirmBtn.addEventListener("click", async () => {
-  const code = twoFaVerificationToken.value.trim();
+    const code = twoFaVerificationToken.value.trim();
 
-  // 🔑 Si c'est une désactivation ET qu'on est en session de secours, la saisie est optionnelle
-  if (isTwoFactorActive && isBackupAuthSession) {
-    // Saisie optionnelle (bypass autorisé côté backend)
-  } else {
-    if (!code || code.length !== 6) {
-      twoFaError.textContent = "Veuillez entrer un code à 6 chiffres.";
-      return;
-    }
-  }
-
-  try {
-    twoFaConfirmBtn.disabled = true;
-    twoFaConfirmBtn.textContent = "Traitement...";
-
-    if (isTwoFactorActive) {
-      // 🛑 COMMUNIQUE AVEC LA ROUTE DELETE DE DORIAN
-      const res = await fetch(`${API_URL}/auth/2fa`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        },
-        body: JSON.stringify({ token: code || undefined }),
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        isTwoFactorActive = false;
-        isBackupAuthSession = false;
-        updateTwoFaMenuButton();
-        showToast("🔓 La double authentification a été désactivée.");
-        close2FaModal();
-      } else {
-        // Traduction de l'erreur
-        if (data.message === "Invalid 2FA code.") {
-          twoFaError.textContent = "Code invalide.";
-        } else {
-          twoFaError.textContent = data.message || "Code incorrect, désactivation refusée.";
-        }
-      }
+    // 🔑 Si c'est une désactivation ET qu'on est en session de secours, la saisie est optionnelle
+    if (isTwoFactorActive && isBackupAuthSession) {
+      // Saisie optionnelle (bypass autorisé côté backend)
     } else {
-      // 🟢 COMMUNICATE AVEC LA ROUTE VERIFY POUR ACTIVER
-      const res = await fetch(`${API_URL}/auth/2fa/verify`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        },
-        body: JSON.stringify({ token: code }),
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        isTwoFactorActive = true;
-        updateTwoFaMenuButton();
-        close2FaModal();
-
-        if (data.backupCodes && data.backupCodes.length > 0) {
-          latestBackupCodes = data.backupCodes;
-          backupCodesList.innerHTML = "";
-          data.backupCodes.forEach((bCode) => {
-            const div = document.createElement("div");
-            div.className = "backup-code-item";
-            div.textContent = bCode;
-            backupCodesList.appendChild(div);
-          });
-          backupCodesModal.classList.remove("hidden");
-        } else {
-          showToast("🛡️ Double authentification activée avec succès !");
-        }
-      } else {
-        // Traduction de l'erreur
-        if (data.message === "Invalid 2FA code.") {
-          twoFaError.textContent = "Code invalide.";
-        } else {
-          twoFaError.textContent = data.message || "Code incorrect, réessayez.";
-        }
+      if (!code || code.length !== 6) {
+        twoFaError.textContent = "Veuillez entrer un code à 6 chiffres.";
+        return;
       }
     }
-  } catch (err) {
-    twoFaError.textContent =
-      "Erreur réseau lors de la communication avec le serveur.";
-  } finally {
-    // 🔧 RESTAURATION DU TEXTE DU BOUTON EN CAS D'ÉCHEC
-    twoFaConfirmBtn.disabled = false;
-    if (isTwoFactorActive) {
-      twoFaConfirmBtn.textContent = "Désactiver la protection";
-    } else {
-      twoFaConfirmBtn.textContent = "Activer";
+
+    try {
+      twoFaConfirmBtn.disabled = true;
+      twoFaConfirmBtn.textContent = "Traitement...";
+
+      if (isTwoFactorActive) {
+        // 🛑 COMMUNIQUE AVEC LA ROUTE DELETE DE DORIAN
+        const res = await fetch(`${API_URL}/auth/2fa`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ token: code || undefined }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          isTwoFactorActive = false;
+          isBackupAuthSession = false;
+          updateTwoFaMenuButton();
+          showToast("🔓 La double authentification a été désactivée.");
+          close2FaModal();
+        } else {
+          // Traduction de l'erreur
+          if (data.message === "Invalid 2FA code.") {
+            twoFaError.textContent = "Code invalide.";
+          } else {
+            twoFaError.textContent =
+              data.message || "Code incorrect, désactivation refusée.";
+          }
+        }
+      } else {
+        // 🟢 COMMUNICATE AVEC LA ROUTE VERIFY POUR ACTIVER
+        const res = await fetch(`${API_URL}/auth/2fa/verify`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({ token: code }),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          isTwoFactorActive = true;
+          updateTwoFaMenuButton();
+          close2FaModal();
+
+          if (data.backupCodes && data.backupCodes.length > 0) {
+            latestBackupCodes = data.backupCodes;
+            backupCodesList.innerHTML = "";
+            data.backupCodes.forEach((bCode) => {
+              const div = document.createElement("div");
+              div.className = "backup-code-item";
+              div.textContent = bCode;
+              backupCodesList.appendChild(div);
+            });
+            backupCodesModal.classList.remove("hidden");
+          } else {
+            showToast("🛡️ Double authentification activée avec succès !");
+          }
+        } else {
+          // Traduction de l'erreur
+          if (data.message === "Invalid 2FA code.") {
+            twoFaError.textContent = "Code invalide.";
+          } else {
+            twoFaError.textContent =
+              data.message || "Code incorrect, réessayez.";
+          }
+        }
+      }
+    } catch (err) {
+      twoFaError.textContent =
+        "Erreur réseau lors de la communication avec le serveur.";
+    } finally {
+      // 🔧 RESTAURATION DU TEXTE DU BOUTON EN CAS D'ÉCHEC
+      twoFaConfirmBtn.disabled = false;
+      if (isTwoFactorActive) {
+        twoFaConfirmBtn.textContent = "Désactiver la protection";
+      } else {
+        twoFaConfirmBtn.textContent = "Activer";
+      }
     }
-  }
-});
+  });
 
   // Écouteurs de fermeture standard
   twoFaCancelBtn.addEventListener("click", close2FaModal);
@@ -2205,13 +2535,37 @@ if (setup2FaBtn) {
   });
 }
 
-// Écouteurs pour la modale d'affichage des codes de secours
-if (btnCopyBackupCodes && btnCloseBackupModal) {
-  btnCopyBackupCodes.addEventListener("click", () => {
+// Écouteurs pour la modale d'affichage des codes de secours (Téléchargement TXT)
+if (btnDownloadBackupCodes && btnCloseBackupModal) {
+  btnDownloadBackupCodes.addEventListener("click", () => {
     if (latestBackupCodes.length > 0) {
-      navigator.clipboard.writeText(latestBackupCodes.join("\n")).then(() => {
-        showToast("📋 10 codes de secours copiés !");
-      });
+      const fileHeader =
+        "========================================\n" +
+        "   SWORDMANAGER - CODES DE SECOURS 2FA  \n" +
+        "========================================\n\n" +
+        "Conservez ce fichier en lieu sûr.\n" +
+        "Chaque code ne peut être utilisé qu'une seule fois.\n\n" +
+        "Vos codes :\n" +
+        "----------------------------------------\n";
+
+      const fileContent =
+        fileHeader + latestBackupCodes.join("\n") + "\n----------------------------------------\n";
+
+      const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `SwordManager_Codes_Secours_${new Date().toISOString().split("T")[0]}.txt`
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast("📥 Fichier des codes de secours téléchargé !");
     }
   });
 
@@ -2221,11 +2575,5 @@ if (btnCopyBackupCodes && btnCloseBackupModal) {
   });
 }
 
-const close2FaModal = () => {
-  twoFaModal.classList.add("hidden");
-  twoFaVerificationToken.value = "";
-  twoFaError.textContent = "";
-  twoFaConfirmBtn.disabled = false; // 💡 Sécurité : réactive le bouton à chaque fermeture
-};
 // Tente de restaurer une session active au chargement de la page (reload, retour d'onglet...)
 restoreSession();
