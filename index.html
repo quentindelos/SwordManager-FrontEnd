@@ -206,6 +206,10 @@
                 <span class="menu-item-icon" aria-hidden="true">📥</span>
                 <span>Exporter</span>
               </button>
+              <button id="import-btn" class="menu-item" type="button">
+                <span class="menu-item-icon" aria-hidden="true">📤</span>
+                <span>Importer</span>
+              </button>
               <button id="setup-2fa-btn" class="menu-item" type="button">
                 <span class="menu-item-icon" aria-hidden="true">🛡️</span>
                 <span>Activer le 2FA</span>
@@ -349,41 +353,41 @@
       </div>
     </form>
 
-    <!-- MODALE D'AFFICHAGE ET SAUVEGARDE DES CODES DE SECOURS (Après activation 2FA) -->
-    <div id="backup-codes-modal" class="hidden">
-      <div class="modal-card" style="max-width: 480px; text-align: center">
-        <div class="modal-header">
-          <h3>🎉 2FA Activé avec succès !</h3>
-        </div>
-        <div class="modal-body" style="padding: 15px 0">
-          <p class="warning-text">
-            ⚠️ <strong>Enregistrez vos 10 codes de secours.</strong><br />
-            Chaque code ne peut être utilisé qu'une seule fois si vous perdez
-            votre téléphone.
-          </p>
+<!-- MODALE D'AFFICHAGE ET SAUVEGARDE DES CODES DE SECOURS (Après activation 2FA) -->
+<div id="backup-codes-modal" class="hidden">
+  <div class="modal-card" style="max-width: 480px; text-align: center">
+    <div class="modal-header">
+      <h3>🎉 2FA Activé avec succès !</h3>
+    </div>
+    <div class="modal-body" style="padding: 15px 0">
+      <p class="warning-text">
+        ⚠️ <strong>Enregistrez vos 10 codes de secours.</strong><br />
+        Chaque code ne peut être utilisé qu'une seule fois si vous perdez
+        votre téléphone.
+      </p>
 
-          <div id="backup-codes-list" class="backup-codes-grid">
-            <!-- Rempli dynamiquement en JS -->
-          </div>
-        </div>
-        <div class="modal-footer" style="justify-content: space-between">
-          <button
-            type="button"
-            id="btn-copy-backup-codes"
-            class="btn btn-secondary"
-          >
-            📋 Copier les codes
-          </button>
-          <button
-            type="button"
-            id="btn-close-backup-modal"
-            class="btn btn-primary"
-          >
-            J'ai bien enregistré mes codes
-          </button>
-        </div>
+      <div id="backup-codes-list" class="backup-codes-grid">
+        <!-- Rempli dynamiquement en JS -->
       </div>
     </div>
+    <div class="modal-footer" style="justify-content: space-between">
+      <button
+        type="button"
+        id="btn-download-backup-codes"
+        class="btn btn-secondary"
+      >
+        📥 Télécharger (.txt)
+      </button>
+      <button
+        type="button"
+        id="btn-close-backup-modal"
+        class="btn btn-primary"
+      >
+        J'ai bien enregistré mes codes
+      </button>
+    </div>
+  </div>
+</div>
 
     <!-- MODALE DU RAPPORT DE SÉCURITÉ -->
     <div id="report-modal" class="hidden">
@@ -497,6 +501,101 @@
           </button>
           <button id="folder-confirm-btn" class="btn btn-primary" type="button">
             Créer le dossier
+          </button>
+        </div>
+      </div>
+    </div>
+
+<!-- MODALE D'IMPORTATION DE FICHIER (CSV / JSON) -->
+    <div id="import-modal" class="hidden">
+      <div class="modal-card" style="max-width: 550px">
+        <div class="modal-header">
+          <h3>📤 Importer des identifiants (CSV / JSON)</h3>
+          <button
+            type="button"
+            id="import-close-cross"
+            class="modal-close"
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <div class="field">
+            <label for="import-source-format">Source du fichier</label>
+            <select
+              id="import-source-format"
+              class="folder-select"
+              style="width: 100%"
+            >
+              <option value="auto">
+                🔍 Détection automatique (Bitwarden, Chrome, Firefox, etc.)
+              </option>
+              <option value="bitwarden">Bitwarden / Vaultwarden (JSON / CSV)</option>
+              <option value="chrome">Google Chrome / Brave (CSV)</option>
+              <option value="generic">
+                Format Générique (Nom, URL, Identifiant, Mot de passe, Dossier)
+              </option>
+            </select>
+          </div>
+
+          <div class="field" style="margin-top: 15px">
+            <label>Fichier à importer</label>
+            <div class="file-drop-zone" id="file-drop-zone">
+              <span style="font-size: 2rem">📄</span>
+              <p id="file-drop-text" style="margin: 6px 0 0; font-size: 0.9rem">
+                Cliquez ou glissez-déposez votre fichier CSV ou JSON ici
+              </p>
+              <input
+                type="file"
+                id="import-file-input"
+                accept=".csv,.json"
+                class="hidden"
+              />
+            </div>
+          </div>
+
+          <!-- Zone de prévisualisation -->
+          <div
+            id="import-preview-container"
+            class="hidden"
+            style="margin-top: 15px"
+          >
+            <p
+              style="font-weight: bold; font-size: 0.88rem; margin-bottom: 8px"
+            >
+              📊 Prévisualisation :
+              <span
+                id="import-count-badge"
+                style="color: var(--color-primary-hover)"
+                >0</span
+              >
+              identifiant(s) détecté(s)
+            </p>
+            <div
+              class="report-list"
+              id="import-preview-list"
+              style="max-height: 140px"
+            >
+              <!-- Rempli dynamiquement en JS -->
+            </div>
+          </div>
+
+          <p id="import-error" class="error" style="margin-top: 10px"></p>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="import-cancel-btn" class="btn btn-ghost">
+            Annuler
+          </button>
+          <button
+            type="button"
+            id="import-confirm-btn"
+            class="btn btn-primary"
+            disabled
+          >
+            💾 Lancer l'importation
           </button>
         </div>
       </div>
