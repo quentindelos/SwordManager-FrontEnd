@@ -905,12 +905,71 @@ button {
 }
 
 /* ==========================================================================
+   📤 STYLES D'IMPORTATION CSV (DRAG & DROP)
+   ========================================================================== */
+.file-drop-zone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  background: var(--color-surface-alt);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.file-drop-zone:hover,
+.file-drop-zone.drag-over {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+/* Empêche le tableau de s'étirer à l'infini */
+#entries-table {
+  width: 100%;
+  table-layout: fixed; /* 💡 Forcer le respect des largeurs de colonnes */
+}
+
+/* Redimensionnement propre des colonnes */
+#entries-table th:nth-child(1),
+#entries-table td:nth-child(1) {
+  width: 22%;
+} /* Nom */
+#entries-table th:nth-child(2),
+#entries-table td:nth-child(2) {
+  width: 30%;
+} /* URL */
+#entries-table th:nth-child(3),
+#entries-table td:nth-child(3) {
+  width: 20%;
+} /* Identifiant */
+#entries-table th:nth-child(4),
+#entries-table td:nth-child(4) {
+  width: 18%;
+} /* Mdp */
+#entries-table th:nth-child(5),
+#entries-table td:nth-child(5) {
+  width: 10%;
+} /* Actions */
+
+/* Tronquage visuel avec "..." pour la colonne URL */
+#entries-table td[data-label="URL"] a {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* 💡 Ajoute les "..." automatiques */
+}
+
+/* ==========================================================================
    MODALE DE CONFIRMATION PERSONNALISÉE
    ========================================================================== */
 #confirm-modal:not(.hidden),
 #report-modal:not(.hidden),
 #guide-modal:not(.hidden),
-#twofa-modal:not(.hidden) {
+#twofa-modal:not(.hidden),
+#import-modal:not(.hidden) {
   /* 💡 Ajoute cette ligne ici */
   position: fixed;
   inset: 0;
